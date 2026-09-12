@@ -1,0 +1,11 @@
+idf_component_register(
+    SRCS
+        "ble_mgr.c"
+        "gatt_svr.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        nimble_peripheral_utils
+        nvs_flash
+        bt
+)
