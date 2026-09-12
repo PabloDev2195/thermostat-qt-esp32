@@ -1,37 +1,102 @@
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Controls
+import Thermostat 1.0
 
+/**
+ * ThermostatDial
+ * ----------------
+ * Main thermostat view: Nest-style circular dial, mode controls
+ * (Off/Auto/Normal), fan control, clock/date, and BLE connection status
+ * with the ESP32.
+ *
+ * High-level hierarchy:
+ *  - BleManager (C++ backend): handles the actual BLE scanning/connection.
+ *  - mainColumn: date/time + row of controls (modes | dial | fan).
+ *  - bluetoothIcon: visual BLE connection indicator (color reflects state).
+ *
+ * NOTE: there are currently two separate sources of "connected" state:
+ *  - `root.connected` (local bool, currently hardcoded to true) drives the
+ *    status text ("Idle"/"Heating"/"Disconnected") inside the dial.
+ *  - `bleManager.connected` (real backend property) drives the color of
+ *    the Bluetooth icon.
+ *  These two are not yet unified — see comment on `root.connected`.
+ */
 Item {
     id: root
 
+    // ------------------------------------------------------------------
+    // BLE backend
+    // ------------------------------------------------------------------
+
+    /**
+     * Instance of the C++ backend (BleManager) exposed to QML as type
+     * "Thermostat 1.0". Once the component finishes creation, it
+     * automatically starts a BLE scan looking for the ESP32 ("nimble-bleprph").
+     */
+    BleManager {
+        id: bleManager
+        Component.onCompleted: startScan()
+    }
+
+    // ------------------------------------------------------------------
+    // Thermostat state (UI data / placeholders)
+    // ------------------------------------------------------------------
+
+    /// Current ambient temperature shown on the dial. Placeholder: 21.5°.
     property real currentTemp: 21.5
+
+    /// Target temperature the user adjusts by dragging the dial handle.
     property real targetTemp: 22.0
+
+    /// Whether the system is currently heating (changes the active arc color).
     property bool heating: false
+
+    /**
+     * Connection state shown in the dial's center status text ("Idle" /
+     * "Heating" / "Disconnected") and its accompanying colored dot.
+     * TODO: currently hardcoded to `true`; should be bound to
+     * `bleManager.connected` once the Qt<->ESP32 connection logic is
+     * complete (see the Qt<->ESP32 connection ticket).
+     */
     property bool connected: true
 
+    /// Lower bound of the temperature range representable on the dial.
     property real minTemp: 10.0
+
+    /// Upper bound of the temperature range representable on the dial.
     property real maxTemp: 30.0
 
+    /// Current fan speed, 1 to 3 (controls how many bars of the fan icon light up).
     property int fanSpeed: 1
+
+    /// Thermostat mode: 1 = Off, 2 = Auto, 3 = Normal (see the mode ButtonGroup).
     property int thermostatMode: 1
 
-    property bool btConnected: false
-
+    /// Current date/time, refreshed every second by the Timer below; feeds the date text.
     property date now: new Date()
 
+    /// Angle (in degrees) where the dial's arc begins (roughly the "10 o'clock" position).
     readonly property real startAngle: 135
+
+    /// Total sweep of the dial's arc, in degrees (leaves a gap at the bottom, Nest-style).
     readonly property real sweepAngle: 270
 
     implicitWidth: mainColumn.implicitWidth
     implicitHeight: mainColumn.implicitHeight
 
+    /**
+     * Converts a temperature value to its corresponding angle on the dial's arc.
+     * @param temp Temperature to convert; clamped to [minTemp, maxTemp].
+     * @return Angle in degrees within [startAngle, startAngle + sweepAngle].
+     */
     function angleForTemp(temp) {
         const clamped = Math.max(root.minTemp, Math.min(root.maxTemp, temp));
         const fraction = (clamped - root.minTemp) / (root.maxTemp - root.minTemp);
         return root.startAngle + fraction * root.sweepAngle;
     }
 
+    /// Refreshes `root.now` every second to keep the UI clock up to date.
     Timer {
         interval: 1000
         running: true
@@ -39,12 +104,18 @@ Item {
         onTriggered: root.now = new Date()
     }
 
+    // ------------------------------------------------------------------
+    // Main layout
+    // ------------------------------------------------------------------
+
+    /// Root column: date/time on top, row of controls (modes | dial | fan) below.
     Column {
         id: mainColumn
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         spacing: 5
 
+        /// Date and time text, formatted as "dddd, d MMMM · hh:mm".
         Text {
             id: dateTimeText
             text: Qt.formatDateTime(root.now, "dddd, d MMMM · hh:mm")
@@ -54,18 +125,26 @@ Item {
             font.weight: Font.DemiBold
         }
 
+        /// Row holding the three main sections: mode buttons, dial, fan control.
         Row {
             id: content
             spacing: 12
 
+            // ----------------------------------------------------------
+            // Mode buttons column (Off / Auto / Normal)
+            // ----------------------------------------------------------
+
+            /// Thermostat mode buttons, mutually exclusive via ButtonGroup.
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 30
 
+                /// Groups the three mode buttons so only one is "checked" at a time.
                 ButtonGroup {
                     id: modeGroup
                 }
 
+                /// "OFF" mode button (thermostatMode = 1). Checked by default on startup.
                 Button {
                     text: "OFF"
                     checkable: true
@@ -91,6 +170,7 @@ Item {
                     }
                 }
 
+                /// "Auto" mode button (thermostatMode = 2).
                 Button {
                     text: "Auto"
                     checkable: true
@@ -115,6 +195,7 @@ Item {
                     }
                 }
 
+                /// "Normal" mode button (thermostatMode = 3).
                 Button {
                     text: "Normal"
                     checkable: true
@@ -140,14 +221,21 @@ Item {
                 }
             }
 
+            // ----------------------------------------------------------
+            // Circular dial (the thermostat's visual centerpiece)
+            // ----------------------------------------------------------
+
+            /// Dial container: background track, active arc, target handle, and center text.
             Item {
                 id: dialArea
                 width: 280
                 height: 280
                 anchors.verticalCenter: parent.verticalCenter
 
+                /// Radius of the dial's ring, derived from the container's size.
                 readonly property real ringRadius: Math.min(width, height) / 2 - 12
 
+                /// Background track of the dial (full arc in dark gray, always visible).
                 Shape {
                     anchors.fill: parent
                     ShapePath {
@@ -166,6 +254,11 @@ Item {
                     }
                 }
 
+                /**
+                 * Active arc: represents the current temperature over the background track.
+                 * Colored orange when `heating` is active, blue otherwise.
+                 * The sweep goes from `startAngle` to the angle for `currentTemp`.
+                 */
                 Shape {
                     anchors.fill: parent
                     ShapePath {
@@ -184,6 +277,11 @@ Item {
                     }
                 }
 
+                /**
+                 * Handle (knob) marking the `targetTemp` position on the ring.
+                 * Its (x, y) position is computed trigonometrically from the angle
+                 * corresponding to the target, using the ring's radius.
+                 */
                 Rectangle {
                     width: 30
                     height: 30
@@ -199,10 +297,12 @@ Item {
                        - height / 2
                 }
 
+                /// Center content of the dial: current temperature, target, and connection status.
                 Column {
                     anchors.centerIn: parent
                     spacing: 4
 
+                    /// Current temperature, large, centered in the dial (e.g. "21.5°").
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: root.currentTemp.toFixed(1) + "°"
@@ -210,15 +310,18 @@ Item {
                         font.pixelSize: 48
                         font.weight: Font.Medium
                     }
+                    /// Secondary text showing the target temperature.
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "Target " + root.targetTemp.toFixed(1) + "°"
                         color: "#9a9a92"
                         font.pixelSize: 14
                     }
+                    /// Status indicator: colored dot + text ("Idle"/"Heating"/"Disconnected").
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: 6
+                        /// Colored dot: green if `root.connected`, red otherwise.
                         Rectangle {
                             width: 8
                             height: 8
@@ -226,6 +329,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             color: root.connected ? "#63a35c" : "#a33d3d"
                         }
+                        /// Status text derived from `connected` and `heating`.
                         Text {
                             text: root.connected ? (root.heating ? "Heating" : "Idle") : "Disconnected"
                             color: "#9a9a92"
@@ -234,6 +338,11 @@ Item {
                     }
                 }
 
+                /**
+                 * Mouse/touch area covering the whole dial to allow dragging the
+                 * target handle. Converts cursor position into an angle, then into
+                 * a fraction of the [minTemp, maxTemp] range, rounding to 0.5° steps.
+                 */
                 MouseArea {
                     anchors.fill: parent
                     onPositionChanged: (mouse) => {
@@ -255,10 +364,16 @@ Item {
 
             }
 
+            // ----------------------------------------------------------
+            // Fan control
+            // ----------------------------------------------------------
+
+            /// Column with speed indicator, circular fan button, and label.
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
 
+                /// Three increasing-height bars visually indicating `fanSpeed` (1 to 3 lit).
                 Row {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 4
@@ -275,6 +390,7 @@ Item {
                     }
                 }
 
+                /// Circular button with a fan icon; clicking cycles fanSpeed 1→2→3→1.
                 Rectangle {
                     id: fanButton
                     width: 70
@@ -284,6 +400,7 @@ Item {
                     border.color: "#3a3d43"
                     border.width: 1
 
+                    /// Fan SVG icon, scaled to fit the button.
                     Item {
                         id: fanIcon
                         anchors.centerIn: parent
@@ -306,6 +423,7 @@ Item {
                         }
                     }
 
+                    /// On click, cycles `fanSpeed`: 1 → 2 → 3 → 1.
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
@@ -314,6 +432,7 @@ Item {
                     }
                 }
 
+                /// Text label below the fan button.
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "Fan"
@@ -325,6 +444,16 @@ Item {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Bluetooth connection indicator
+    // ------------------------------------------------------------------
+
+    /**
+     * Bluetooth icon (hand-drawn with PathLine, classic BT logo shape).
+     * Color reflects `bleManager.connected`:
+     * blue (#4da6ff) when a BLE connection is active, gray (#666666) otherwise.
+     * Positioned in the top-right corner, aligned with the date/time text.
+     */
     Shape {
         id: bluetoothIcon
         anchors.verticalCenter: dateTimeText.verticalCenter
@@ -335,7 +464,7 @@ Item {
 
         ShapePath {
             strokeWidth: 2
-            strokeColor: root.btConnected ? "#4da6ff" : "#666666"
+            strokeColor: bleManager.connected ? "#4da6ff" : "#666666"
             fillColor: "transparent"
             capStyle: ShapePath.RoundCap
             joinStyle: ShapePath.RoundJoin
