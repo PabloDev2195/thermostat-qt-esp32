@@ -25,12 +25,12 @@ static adc_oneshot_unit_handle_t adc_handle;
  * 12 dB attenuation.
  *
  * @return
- * - ADC_STATUS_OK if the ADC was initialized successfully.
- * - ADC_STATUS_ERROR if the ADC unit or channel configuration failed.
+ * - ESP32_ADC_STATUS_OK if the ADC was initialized successfully.
+ * - ESP32_ADC_STATUS_ERROR if the ADC unit or channel configuration failed.
  */
-adc_status_t esp32_adc_init(void)
+esp32_adc_status_t esp32_adc_init(void)
 {
-    adc_status_t status = ADC_STATUS_OK;
+    esp32_adc_status_t status = ESP32_ADC_STATUS_OK;
 
     adc_oneshot_unit_init_cfg_t config = 
     {
@@ -41,7 +41,7 @@ adc_status_t esp32_adc_init(void)
 
     if (err != ESP_OK)
     {
-        status = ADC_STATUS_ERROR;
+        status = ESP32_ADC_STATUS_ERROR;
     }
     else
     {
@@ -58,7 +58,7 @@ adc_status_t esp32_adc_init(void)
 
         if (err != ESP_OK)
         {
-            status = ADC_STATUS_ERROR;
+            status = ESP32_ADC_STATUS_ERROR;
         }
     }
 
@@ -75,17 +75,17 @@ adc_status_t esp32_adc_init(void)
  * @param[out] value Pointer where the raw ADC value will be stored.
  *
  * @return
- * - ADC_STATUS_OK if the conversion was successful.
- * - ADC_STATUS_INVALID_PARAM if @p value is NULL.
- * - ADC_STATUS_ERROR if the ADC conversion failed.
+ * - ESP32_ADC_STATUS_OK if the conversion was successful.
+ * - ESP32_ADC_STATUS_INVALID_PARAM if @p value is NULL.
+ * - ESP32_ADC_STATUS_ERROR if the ADC conversion failed.
  */
-adc_status_t esp32_adc_read(uint16_t *value)
+esp32_adc_status_t esp32_adc_read(uint16_t *value)
 {
-    adc_status_t status = ADC_STATUS_OK;
+    esp32_adc_status_t status = ESP32_ADC_STATUS_OK;
 
     if (value == NULL)
     {
-        status = ADC_STATUS_INVALID_PARAM;
+        status = ESP32_ADC_STATUS_INVALID_PARAM;
     }
     else
     {
@@ -93,7 +93,7 @@ adc_status_t esp32_adc_read(uint16_t *value)
         esp_err_t err = adc_oneshot_read(adc_handle, ADC_CHANNEL, &raw_value);
         if (err != ESP_OK)
         {
-            status = ADC_STATUS_ERROR;
+            status = ESP32_ADC_STATUS_ERROR;
         }
         else
         {
