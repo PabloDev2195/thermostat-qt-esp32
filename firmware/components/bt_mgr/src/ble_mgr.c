@@ -5,12 +5,13 @@
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
-#include "bleprph.h"
+#include "esp32_bleprph.h"
 #include "ble_mgr.h"
 
 static const char *tag = "BLE_MGR";
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 static uint8_t own_addr_type;
+static uint16_t g_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 
 void ble_store_config_init(void);
 
@@ -118,6 +119,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
                         event->connect.status);
             if (event->connect.status == 0) 
             {
+                g_conn_handle = event->connect.conn_handle;   // 👈 agrega esta línea
                 rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
                 assert(rc == 0);
                 bleprph_print_conn_desc(&desc);
@@ -130,6 +132,7 @@ static int bleprph_gap_event(struct ble_gap_event *event, void *arg)
 
         case BLE_GAP_EVENT_DISCONNECT:
             MODLOG_DFLT(INFO, "disconnect; reason=%d\n", event->disconnect.reason);
+            g_conn_handle = BLE_HS_CONN_HANDLE_NONE;   // 👈 agrega esta línea
             bleprph_advertise();
             break;
 
@@ -268,4 +271,14 @@ void ble_manager_init(void)
 
     ble_store_config_init();
     nimble_port_freertos_init(bleprph_host_task);
+}
+
+void ble_manager_update_temperature(float temperature_c)
+{
+    gatt_svr_set_temperature(temperature_c, g_conn_handle);
+}
+
+bool ble_manager_is_connected(void)
+{
+    return g_conn_handle != BLE_HS_CONN_HANDLE_NONE;
 }

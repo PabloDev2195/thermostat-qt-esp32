@@ -24,7 +24,7 @@
 #include "host/ble_uuid.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
-#include "bleprph.h"
+#include "esp32_bleprph.h"
 #include "services/ans/ble_svc_ans.h"
 
 /*** Maximum number of characteristics with the notify flag ***/
@@ -40,6 +40,13 @@ static uint16_t gatt_svr_chr_val_handle;
 static const ble_uuid128_t gatt_svr_chr_uuid =
     BLE_UUID128_INIT(0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11,
                      0x22, 0x22, 0x22, 0x22, 0x33, 0x33, 0x33, 0x33);
+
+/* Temperature characteristic — read + notify */
+static int16_t gatt_svr_temp_val_x10;
+static uint16_t gatt_svr_temp_val_handle;
+static const ble_uuid128_t gatt_svr_temp_uuid =
+    BLE_UUID128_INIT(0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05,
+                     0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0e);
 
 /* A custom descriptor */
 static uint8_t gatt_svr_dsc_val;
@@ -83,6 +90,12 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                       0, /* No more descriptors in this characteristic */
                     }
                 },
+            }, {
+                /*** Temperature characteristic ***/
+                .uuid = &gatt_svr_temp_uuid.u,
+                .access_cb = gatt_svc_access,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &gatt_svr_temp_val_handle,
             }, {
                 0, /* No more characteristics in this service. */
             }
@@ -132,20 +145,32 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
     const ble_uuid_t *uuid;
     int rc;
 
-    switch (ctxt->op) {
+    switch (ctxt->op) 
+    {
     case BLE_GATT_ACCESS_OP_READ_CHR:
-        if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+        if (conn_handle != BLE_HS_CONN_HANDLE_NONE) 
+        {
             MODLOG_DFLT(INFO, "Characteristic read; conn_handle=%d attr_handle=%d\n",
                         conn_handle, attr_handle);
-        } else {
+        } 
+        else 
+        {
             MODLOG_DFLT(INFO, "Characteristic read by NimBLE stack; attr_handle=%d\n",
                         attr_handle);
         }
         uuid = ctxt->chr->uuid;
-        if (attr_handle == gatt_svr_chr_val_handle) {
+        if (attr_handle == gatt_svr_chr_val_handle) 
+        {
             rc = os_mbuf_append(ctxt->om,
                                 &gatt_svr_chr_val,
                                 sizeof(gatt_svr_chr_val));
+            return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+        }
+        if (attr_handle == gatt_svr_temp_val_handle)          // 👈 agrega esto
+        {
+            rc = os_mbuf_append(ctxt->om,
+                                &gatt_svr_temp_val_x10,
+                                sizeof(gatt_svr_temp_val_x10));
             return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
         }
         goto unknown;
@@ -264,4 +289,16 @@ gatt_svr_init(void)
     gatt_svr_dsc_val = 0x99;
 
     return 0;
+}
+
+void
+gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle)
+{
+    gatt_svr_temp_val_x10 = (int16_t)(temperature_c * 10);
+
+    if (conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+        struct os_mbuf *om = ble_hs_mbuf_from_flat(&gatt_svr_temp_val_x10,
+                                                     sizeof(gatt_svr_temp_val_x10));
+        ble_gatts_notify_custom(conn_handle, gatt_svr_temp_val_handle, om);
+    }
 }

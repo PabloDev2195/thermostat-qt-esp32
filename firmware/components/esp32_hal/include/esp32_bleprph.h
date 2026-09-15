@@ -17,8 +17,8 @@
  * under the License.
  */
 
-#ifndef H_BLEPRPH_
-#define H_BLEPRPH_
+#ifndef H_ESP32_BLEPRPH_
+#define H_ESP32_BLEPRPH_
 
 #include <stdbool.h>
 #include "nimble/ble.h"
@@ -41,6 +41,7 @@ struct ble_gatt_register_ctxt;
 
 void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg);
 int gatt_svr_init(void);
+void gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle);
 
 #ifdef __cplusplus
 }

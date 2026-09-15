@@ -1,11 +1,8 @@
 idf_component_register(
     SRCS
-        "ble_mgr.c"
-        "gatt_svr.c"
+        "src/ble_mgr.c"
     INCLUDE_DIRS
-        "."
+        "include"
     REQUIRES
-        nimble_peripheral_utils
-        nvs_flash
-        bt
+        esp32_hal
 )
