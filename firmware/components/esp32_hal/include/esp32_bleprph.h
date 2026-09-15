@@ -39,8 +39,37 @@ struct ble_gatt_register_ctxt;
 #define GATT_SVR_CHR_UNR_ALERT_STAT_UUID      0x2A45
 #define GATT_SVR_CHR_ALERT_NOT_CTRL_PT        0x2A44
 
+/**
+ * @brief GATT server registration callback.
+ *
+ * Called by the NimBLE GATT server when a service, characteristic,
+ * or descriptor is registered.
+ *
+ * @param[in] ctxt Registration context provided by the NimBLE stack.
+ * @param[in] arg User-defined argument provided during registration.
+ */
 void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg);
+
+/**
+ * @brief Initialize the GATT server.
+ *
+ * Registers the GATT services, characteristics, and descriptors
+ * required by the BLE application.
+ *
+ * @return
+ * - 0 if the GATT server was initialized successfully.
+ * - A non-zero error code if initialization failed.
+ */
 int gatt_svr_init(void);
+
+/**
+ * @brief Update the temperature characteristic.
+ *
+ * Updates the temperature value associated with the connected BLE client.
+ *
+ * @param[in] temperature_c Temperature value in degrees Celsius.
+ * @param[in] conn_handle BLE connection handle of the client.
+ */
 void gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle);
 
 #ifdef __cplusplus

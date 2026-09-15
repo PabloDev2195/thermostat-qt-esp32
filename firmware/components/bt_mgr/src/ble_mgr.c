@@ -273,11 +273,29 @@ void ble_manager_init(void)
     nimble_port_freertos_init(bleprph_host_task);
 }
 
+/**
+ * @brief Update the temperature value exposed through BLE.
+ *
+ * Updates the temperature characteristic with the provided temperature
+ * value for the currently connected BLE client.
+ *
+ * @param[in] temperature_c Temperature value in degrees Celsius.
+ */
 void ble_manager_update_temperature(float temperature_c)
 {
     gatt_svr_set_temperature(temperature_c, g_conn_handle);
 }
 
+/**
+ * @brief Check whether a BLE client is currently connected.
+ *
+ * Checks the current BLE connection handle to determine whether
+ * a client is connected to the device.
+ *
+ * @return
+ * - true if a BLE client is connected.
+ * - false if there is no active BLE connection.
+ */
 bool ble_manager_is_connected(void)
 {
     return g_conn_handle != BLE_HS_CONN_HANDLE_NONE;
