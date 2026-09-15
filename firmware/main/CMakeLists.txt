@@ -3,5 +3,7 @@ set(srcs "main.c")
 idf_component_register(
     SRCS "${srcs}"
     INCLUDE_DIRS "."
-    REQUIRES bt_mgr
+    REQUIRES bt_mgr 
+             adc 
+             temperature
 )
