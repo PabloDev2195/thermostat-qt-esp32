@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Controls
-import Thermostat 1.0
 
 /**
  * ThermostatDial
@@ -29,22 +28,10 @@ Item {
     // BLE backend
     // ------------------------------------------------------------------
 
-    /**
-     * Instance of the C++ backend (BleManager) exposed to QML as type
-     * "Thermostat 1.0". Once the component finishes creation, it
-     * automatically starts a BLE scan looking for the ESP32 ("nimble-bleprph").
-     */
-    BleManager {
-        id: bleManager
-        Component.onCompleted: startScan()
-    }
 
     // ------------------------------------------------------------------
     // Thermostat state (UI data / placeholders)
     // ------------------------------------------------------------------
-
-    /// Current ambient temperature shown on the dial. Placeholder: 21.5°.
-    property real currentTemp: 21.5
 
     /// Target temperature the user adjusts by dragging the dial handle.
     property real targetTemp: 22.0
@@ -65,7 +52,7 @@ Item {
     property real minTemp: 10.0
 
     /// Upper bound of the temperature range representable on the dial.
-    property real maxTemp: 30.0
+    property real maxTemp: 35.0
 
     /// Current fan speed, 1 to 3 (controls how many bars of the fan icon light up).
     property int fanSpeed: 1
@@ -272,7 +259,7 @@ Item {
                             radiusX: dialArea.ringRadius
                             radiusY: dialArea.ringRadius
                             startAngle: root.startAngle
-                            sweepAngle: root.angleForTemp(root.currentTemp) - root.startAngle
+                            sweepAngle: root.angleForTemp(bleManager.currentTemp) - root.startAngle
                         }
                     }
                 }
@@ -305,7 +292,7 @@ Item {
                     /// Current temperature, large, centered in the dial (e.g. "21.5°").
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: root.currentTemp.toFixed(1) + "°"
+                        text: bleManager.currentTemp.toFixed(1) + "°"
                         color: "#f4f4f2"
                         font.pixelSize: 48
                         font.weight: Font.Medium

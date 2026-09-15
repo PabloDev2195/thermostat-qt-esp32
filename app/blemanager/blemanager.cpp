@@ -9,7 +9,8 @@
  *  - deviceDiscovered -> onDeviceDiscovered: fired for every BLE device found.
  *  - finished         -> onScanFinished: fired when the scan ends.
  */
-BleManager::BleManager(QObject* parent) : QObject(parent) {
+BleManager::BleManager(QObject* parent) : QObject(parent)
+{
     m_discoveryAgent = new QBluetoothDeviceDiscoveryAgent(this);
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered,
             this, &BleManager::onDeviceDiscovered);
@@ -23,7 +24,8 @@ BleManager::BleManager(QObject* parent) : QObject(parent) {
  * Uses LowEnergyMethod to restrict the search to BLE devices only (excludes
  * classic Bluetooth), reducing scan time and noise in the results.
  */
-void BleManager::startScan() {
+void BleManager::startScan()
+{
     qDebug() << "Starting BLE scan...";
     m_discoveryAgent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
 }
@@ -64,7 +66,8 @@ void BleManager::onDeviceDiscovered(const QBluetoothDeviceInfo &device) {
  * a message; it does not distinguish between the two cases or retry the scan
  * if the device wasn't found.
  */
-void BleManager::onScanFinished() {
+void BleManager::onScanFinished()
+{
     qDebug() << "Scan finished, device not found (or already connected)";
 }
 
@@ -74,9 +77,14 @@ void BleManager::onScanFinished() {
  * Marks the internal state as connected via setConnected(true), which
  * triggers connectedChanged() if the value actually changed.
  */
-void BleManager::onControllerConnected() {
+void BleManager::onControllerConnected()
+{
     qDebug() << "Connected to ESP32!";
     setConnected(true);
+
+    connect(m_controller, &QLowEnergyController::serviceDiscovered,
+            this, &BleManager::onServiceDiscovered);
+    m_controller->discoverServices();
 }
 
 /**
@@ -84,7 +92,8 @@ void BleManager::onControllerConnected() {
  *
  * Marks the internal state as disconnected via setConnected(false).
  */
-void BleManager::onControllerDisconnected() {
+void BleManager::onControllerDisconnected()
+{
     qDebug() << "Disconnected from ESP32";
     setConnected(false);
 }
@@ -97,7 +106,8 @@ void BleManager::onControllerDisconnected() {
  * loss of a usable connection. Does not implement retry logic or distinguish
  * between error types.
  */
-void BleManager::onControllerError(QLowEnergyController::Error error) {
+void BleManager::onControllerError(QLowEnergyController::Error error)
+{
     qDebug() << "BLE Controller error:" << error;
     setConnected(false);
 }
@@ -109,9 +119,123 @@ void BleManager::onControllerError(QLowEnergyController::Error error) {
  * Avoids emitting connectedChanged() when the value doesn't actually change,
  * following the standard Qt/QML property setter pattern.
  */
-void BleManager::setConnected(bool value) {
+void BleManager::setConnected(bool value)
+{
     if (m_connected != value) {
         m_connected = value;
         emit connectedChanged();
     }
+}
+
+/**
+ * @brief Handles discovery of BLE GATT services.
+ *
+ * Called when a remote GATT service is discovered by the BLE controller.
+ * Checks whether the discovered service matches the thermostat service UUID.
+ *
+ * If the thermostat service is found, creates a QLowEnergyService object,
+ * connects its state change signal, and starts discovery of its
+ * characteristics and descriptors.
+ *
+ * @param[in] uuid UUID of the discovered GATT service.
+ */
+void BleManager::onServiceDiscovered(const QBluetoothUuid &uuid)
+{
+    qDebug() << "Service discovered:" << uuid.toString();
+
+    if (uuid == QBluetoothUuid(QString(kThermostatServiceUuid)))
+    {
+        qDebug() << "Found thermostat service!";
+        m_service = m_controller->createServiceObject(uuid, this);
+        if (m_service)
+        {
+            connect(m_service, &QLowEnergyService::stateChanged,
+                    this, &BleManager::onServiceStateChanged);
+            m_service->discoverDetails();
+        }
+    }
+}
+
+/**
+ * @brief Handles changes to the remote BLE service state.
+ *
+ * When the thermostat service details have been discovered, iterates
+ * through the available characteristics and searches for the temperature
+ * characteristic.
+ *
+ * If the temperature characteristic supports the Client Characteristic
+ * Configuration descriptor (CCCD), enables notifications by writing the
+ * notification configuration value.
+ *
+ * @param[in] state Current state of the remote BLE service.
+ */
+void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
+{
+    qDebug() << "Service state changed:" << state;
+
+    if (state == QLowEnergyService::RemoteServiceDiscovered)
+    {
+        qDebug() << "Service details discovered, characteristics:";
+        const auto chars = m_service->characteristics();
+        for (const auto &ch : chars)
+        {
+            qDebug() << " -" << ch.uuid().toString();
+
+            if (ch.uuid() == QBluetoothUuid(QString("{0e0c0b0a-0908-0706-0504-030201efcdab}")))
+            {
+                qDebug() << "Found temperature characteristic, enabling notifications...";
+
+                auto cccd = ch.descriptor(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
+                if (cccd.isValid())
+                {
+                    connect(m_service, &QLowEnergyService::characteristicChanged,
+                            this, &BleManager::onCharacteristicChanged);
+                    m_service->writeDescriptor(cccd, QByteArray::fromHex("0100"));
+                }
+                else
+                {
+                    qDebug() << "CCCD descriptor not found!";
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief Handles BLE characteristic value notifications.
+ *
+ * Processes temperature data received from the ESP32 through the
+ * temperature characteristic.
+ *
+ * The received value is expected to contain a signed 16-bit integer
+ * representing the temperature in tenths of a degree Celsius.
+ * The value is converted to degrees Celsius and stored in the
+ * current temperature property.
+ *
+ * If the received temperature is different from the current value,
+ * emits currentTempChanged() to notify QML of the update.
+ *
+ * @param[in] c BLE characteristic that generated the notification.
+ * @param[in] value Raw characteristic value received from the ESP32.
+ */
+void BleManager::onCharacteristicChanged(
+const QLowEnergyCharacteristic &c,
+    const QByteArray &value)
+{
+    if (value.size() < 2)
+        return;
+
+    int16_t temp_x10;
+
+    memcpy(&temp_x10, value.constData(), sizeof(temp_x10));
+
+    double newTemperature = temp_x10 / 10.0;
+
+    if (m_currentTemp == newTemperature)
+    {
+        return;
+    }
+
+    m_currentTemp = newTemperature;
+    emit currentTempChanged();
 }

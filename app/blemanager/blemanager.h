@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QBluetoothDeviceDiscoveryAgent>
 #include <QLowEnergyController>
+#include <QLowEnergyService>
 
 /**
  * @brief Manages BLE discovery and connection to the ESP32 (NimBLE firmware).
@@ -16,8 +17,28 @@
 class BleManager : public QObject {
     Q_OBJECT
 
-    /// Whether a BLE connection to the ESP32 is currently active.
+    /**
+     * @brief BLE connection status.
+     *
+     * Exposes the current BLE connection state to QML as a read-only property.
+     * The value is updated when the BLE connection state changes.
+     *
+     * The NOTIFY signal allows QML to automatically update bindings when
+     * the connection status changes.
+     */
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
+
+    /**
+     * @brief Current temperature received from the BLE device.
+     *
+     * Exposes the current temperature to QML as a read-only property.
+     * The value is updated when new temperature data is received through
+     * the BLE characteristic.
+     *
+     * The NOTIFY signal allows QML to automatically update bindings when
+     * the temperature value changes.
+     */
+    Q_PROPERTY(double currentTemp READ currentTemp NOTIFY currentTempChanged)
 
 public:
     /**
@@ -40,9 +61,23 @@ public:
      */
     Q_INVOKABLE void startScan();
 
+    /**
+     * @brief Get the current temperature.
+     *
+     * @return Current temperature in degrees Celsius.
+     */
+    double currentTemp() const { return m_currentTemp; }
+
 signals:
-    /// Emitted whenever the `connected` property value changes.
+    /**
+     * @brief Emitted when the BLE connection status changes.
+     */
     void connectedChanged();
+
+    /**
+     * @brief Emitted when the current temperature changes.
+     */
+    void currentTempChanged();
 
 private slots:
     /**
@@ -86,6 +121,36 @@ private slots:
      */
     void onControllerError(QLowEnergyController::Error error);
 
+    /**
+     * @brief Handles GATT service discovery.
+     *
+     * Called when a BLE service is discovered on the connected device.
+     *
+     * @param[in] uuid UUID of the discovered service.
+     */
+    void onServiceDiscovered(const QBluetoothUuid &uuid);
+
+    /**
+     * @brief Handles changes to the BLE service state.
+     *
+     * Called when the state of the discovered BLE service changes.
+     *
+     * @param[in] state New state of the BLE service.
+     */
+    void onServiceStateChanged(QLowEnergyService::ServiceState);
+
+    /**
+     * @brief Handles changes to a BLE characteristic value.
+     *
+     * Called when a notification or indication is received from a
+     * subscribed BLE characteristic.
+     *
+     * @param[in] c BLE characteristic that generated the update.
+     * @param[in] value New value received from the characteristic.
+     */
+    void onCharacteristicChanged(const QLowEnergyCharacteristic &c,
+                                 const QByteArray &value);
+
 private:
     /**
      * @brief Updates the internal connection state and notifies on change.
@@ -99,4 +164,28 @@ private:
     QBluetoothDeviceDiscoveryAgent* m_discoveryAgent = nullptr; ///< BLE scanning agent.
     QLowEnergyController* m_controller = nullptr;               ///< Central GATT controller to the ESP32.
     bool m_connected = false;                                   ///< Current connection state.
+
+    /**
+     * @brief GATT service discovered on the ESP32.
+     *
+     * Provides access to the characteristics exposed by the thermostat
+     * BLE service.
+     */
+    QLowEnergyService* m_service = nullptr;
+
+    /**
+     * @brief Current temperature received from the ESP32.
+     *
+     * Temperature value in degrees Celsius.
+     */
+    double m_currentTemp = 0.0;
+
+    /**
+     * @brief UUID of the thermostat GATT service.
+     *
+     * Used to identify the custom thermostat service during BLE service
+     * discovery.
+     */
+    static constexpr auto kThermostatServiceUuid =
+        "{59462f12-9543-9999-12c8-58b459a2712d}";
 };
