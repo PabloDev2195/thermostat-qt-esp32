@@ -30,6 +30,23 @@
 #define PWM_MAX_DUTY    ((1 << PWM_RESOLUTION) - 1)
 
 /**
+ * @brief Converts a percentage value to a PWM duty-cycle value.
+ *
+ * Converts a duty-cycle percentage from the range 0 to 100 into
+ * the corresponding raw PWM duty-cycle value based on the configured
+ * maximum PWM duty cycle.
+ *
+ * @param[in] p Duty-cycle percentage.
+ *               Valid values range from 0 to 100.
+ *
+ * @return Corresponding PWM duty-cycle value.
+ *
+ * @note The result depends on PWM_MAX_DUTY, which is determined by
+ *       the configured PWM resolution.
+ */
+#define PERCENTAGE_TO_DUTY(p) ((p) * PWM_MAX_DUTY / 100)
+
+/**
  * @brief Initializes the ESP32 PWM peripheral.
  *
  * Configures the LEDC timer and channel using the parameters defined
@@ -93,11 +110,12 @@ esp_err_t esp32_pwm_init(void)
  * - ESP_ERR_INVALID_ARG if uDuty exceeds the maximum duty-cycle value.
  * - An appropriate ESP-IDF error code if the LEDC operation fails.
  */
-esp_err_t esp32_pwm_set_duty(uint32_t uDuty)
+esp_err_t esp32_pwm_set_duty(uint8_t uDuty)
 {
     esp_err_t ret;
+    uint16_t uPwmDuty = PERCENTAGE_TO_DUTY(uDuty);
 
-    if (uDuty > PWM_MAX_DUTY)
+    if (uPwmDuty > PWM_MAX_DUTY)
     {
         ret = ESP_ERR_INVALID_ARG;
     }
@@ -106,7 +124,7 @@ esp_err_t esp32_pwm_set_duty(uint32_t uDuty)
         ret = ledc_set_duty(
             PWM_SPEED_MODE,
             PWM_CHANNEL,
-            uDuty
+            uPwmDuty
         );
 
         if (ret != ESP_OK)

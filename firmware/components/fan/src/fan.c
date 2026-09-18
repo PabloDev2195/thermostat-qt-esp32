@@ -19,21 +19,21 @@
  *
  * Corresponds to approximately 20% duty cycle.
  */
-#define FAN_DUTY_LOW       (20 * 1023 / 100)
+#define FAN_DUTY_LOW       20
 
 /**
  * @brief PWM duty cycle for the fan MEDIUM state.
  *
  * Corresponds to approximately 55% duty cycle.
  */
-#define FAN_DUTY_MEDIUM    (55 * 1023 / 100)
+#define FAN_DUTY_MEDIUM    55
 
 /**
  * @brief PWM duty cycle for the fan HIGH state.
  *
  * Corresponds to 100% duty cycle.
  */
-#define FAN_DUTY_HIGH      (100 * 1023 / 100)
+#define FAN_DUTY_HIGH      100
 
 /**
  * @brief Current fan operating level.
@@ -60,13 +60,16 @@ fan_status_t fan_init(void)
     {
         status = FAN_ERROR;
     }
-    else if (pwm_set_duty(FAN_DUTY_OFF) != PWM_OK)
+    else 
     {
-        status = FAN_ERROR;
-    }
-    else
-    {
-        current_level = FAN_LEVEL_OFF;
+        if (pwm_set_duty(FAN_DUTY_OFF) != PWM_OK)
+        {
+            status = FAN_ERROR;
+        }
+        else
+        {
+            current_level = FAN_LEVEL_OFF;
+        }
     }
 
     return status;
@@ -87,7 +90,7 @@ fan_status_t fan_init(void)
  */
 fan_status_t fan_set_level(fan_level_t level)
 {
-    uint16_t duty = FAN_DUTY_OFF;
+    uint8_t duty = FAN_DUTY_OFF;
     fan_status_t status = FAN_OK;
 
     switch (level)
@@ -109,7 +112,7 @@ fan_status_t fan_set_level(fan_level_t level)
             break;
 
         default:
-            return FAN_INVALID_LEVEL;
+            status = FAN_INVALID_LEVEL;
     }
 
     if (pwm_set_duty(duty) != PWM_OK)

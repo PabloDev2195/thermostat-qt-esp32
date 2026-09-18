@@ -62,7 +62,7 @@ esp_err_t esp32_pwm_init(void);
  * - ESP_ERR_INVALID_ARG if the duty cycle is outside the valid range.
  * - An appropriate ESP-IDF error code if the PWM update fails.
  */
-esp_err_t esp32_pwm_set_duty(uint32_t uDuty);
+esp_err_t esp32_pwm_set_duty(uint8_t uDuty);
 
 #ifdef __cplusplus
 }

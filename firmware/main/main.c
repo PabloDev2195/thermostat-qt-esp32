@@ -13,7 +13,17 @@ static void motorControl_task(void *pvParameters)
 {
     for (;;) 
     {
-        vTaskDelay(pdMS_TO_TICKS(500));
+        ESP_LOGI(TAG, "Fan LOW");
+        fan_set_level(FAN_LEVEL_LOW);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+
+        ESP_LOGI(TAG, "Fan MEDIUM");
+        fan_set_level(FAN_LEVEL_MEDIUM);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+
+        ESP_LOGI(TAG, "Fan HIGH");
+        fan_set_level(FAN_LEVEL_HIGH);
+        vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }
 
@@ -29,17 +39,7 @@ static void compressorControl_task(void *pvParameters)
 {
     for (;;) 
     {
-        ESP_LOGI(TAG, "Fan LOW");
-        fan_set_level(FAN_LEVEL_LOW);
-        vTaskDelay(pdMS_TO_TICKS(3000));
-
-        ESP_LOGI(TAG, "Fan MEDIUM");
-        fan_set_level(FAN_LEVEL_MEDIUM);
-        vTaskDelay(pdMS_TO_TICKS(3000));
-
-        ESP_LOGI(TAG, "Fan HIGH");
-        fan_set_level(FAN_LEVEL_HIGH);
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
@@ -67,7 +67,7 @@ void app_main(void)
 {
     ble_manager_init();
     adc_init();
-    if (fan_init() != FAN_OK)
+     if (fan_init() != FAN_OK)
     {
         ESP_LOGE(TAG, "Fan initialization failed");
         return;

@@ -56,14 +56,14 @@ pwm_status_t pwm_init(void);
  *
  * @param[in] uDuty Duty-cycle value.
  *                  With the current 10-bit PWM configuration,
- *                  valid values range from 0 to 1023.
+ *                  valid values range from 0 to 100.
  *
  * @return
  * - PWM_OK if the duty cycle was updated successfully.
  * - PWM_INVALID_DUTY if uDuty is outside the valid range.
  * - PWM_ERROR if the underlying PWM hardware reports an error.
  */
-pwm_status_t pwm_set_duty(uint16_t uDuty);
+pwm_status_t pwm_set_duty(uint8_t uDuty);
 
 #ifdef __cplusplus
 }
