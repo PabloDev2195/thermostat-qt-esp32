@@ -6,4 +6,5 @@ idf_component_register(
     REQUIRES bt_mgr 
              adc 
              temperature
+             fan
 )
