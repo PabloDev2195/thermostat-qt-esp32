@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
 	"src/esp32_adc.c"
     "src/esp32_gatt_svr.c"
+    "src/esp32_pwm.c"
 
     INCLUDE_DIRS
         "include"
@@ -11,4 +12,5 @@ idf_component_register(
         nimble_peripheral_utils
         nvs_flash
         bt
+        esp_driver_ledc
 )
