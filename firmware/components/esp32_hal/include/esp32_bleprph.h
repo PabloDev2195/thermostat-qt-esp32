@@ -40,6 +40,13 @@ struct ble_gatt_register_ctxt;
 #define GATT_SVR_CHR_ALERT_NOT_CTRL_PT        0x2A44
 
 /**
+ * @brief Callback type for handling fan level updates received via GATT.
+ *
+ * @param level Fan level received from the GATT service.
+ */
+typedef void (*gatt_svr_fan_level_callback_t)(uint8_t level);
+
+/**
  * @brief GATT server registration callback.
  *
  * Called by the NimBLE GATT server when a service, characteristic,
@@ -71,6 +78,13 @@ int gatt_svr_init(void);
  * @param[in] conn_handle BLE connection handle of the client.
  */
 void gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle);
+
+/**
+ * @brief Sets the callback used to handle fan level updates.
+ *
+ * @param callback Callback function invoked when a fan level is received.
+ */
+void gatt_svr_set_fan_level_callback(gatt_svr_fan_level_callback_t callback);
 
 #ifdef __cplusplus
 }

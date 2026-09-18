@@ -48,6 +48,13 @@ static const ble_uuid128_t gatt_svr_temp_uuid =
     BLE_UUID128_INIT(0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05,
                      0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0e);
 
+/* Fan characteristic — write + read + notify */
+static uint8_t gatt_svr_fan_val;
+static uint16_t gatt_svr_fan_val_handle;
+static const ble_uuid128_t gatt_svr_fan_uuid =
+    BLE_UUID128_INIT(0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05,
+                     0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0f); 
+
 /**
  * @brief Value stored by the custom GATT descriptor.
  *
@@ -57,6 +64,11 @@ static uint8_t gatt_svr_dsc_val;
 static const ble_uuid128_t gatt_svr_dsc_uuid =
     BLE_UUID128_INIT(0x01, 0x01, 0x01, 0x01, 0x12, 0x12, 0x12, 0x12,
                      0x23, 0x23, 0x23, 0x23, 0x34, 0x34, 0x34, 0x34);
+
+/**
+ * @brief Stores the callback invoked when a fan level is received.
+ */
+static gatt_svr_fan_level_callback_t fan_level_callback = NULL;
 
 /**
  * @brief Handle GATT characteristic and descriptor access operations.
@@ -85,7 +97,8 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
         .uuid = &gatt_svr_svc_uuid.u,
         .characteristics = (struct ble_gatt_chr_def[])
-        { {
+        { 
+            {
                 /*** This characteristic can be subscribed to by writing 0x00 and 0x01 to the CCCD ***/
                 .uuid = &gatt_svr_chr_uuid.u,
                 .access_cb = gatt_svc_access,
@@ -98,7 +111,8 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
 #endif
                 .val_handle = &gatt_svr_chr_val_handle,
                 .descriptors = (struct ble_gatt_dsc_def[])
-                { {
+                { 
+                    {
                       .uuid = &gatt_svr_dsc_uuid.u,
 #if CONFIG_EXAMPLE_ENCRYPTION
                       .att_flags = BLE_ATT_F_READ | BLE_ATT_F_READ_ENC,
@@ -106,17 +120,29 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                       .att_flags = BLE_ATT_F_READ,
 #endif
                       .access_cb = gatt_svc_access,
-                    }, {
+                    }, 
+                    {
                       0, /* No more descriptors in this characteristic */
                     }
                 },
-            }, {
+            }, 
+            {
                 /*** Temperature characteristic ***/
                 .uuid = &gatt_svr_temp_uuid.u,
                 .access_cb = gatt_svc_access,
                 .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
                 .val_handle = &gatt_svr_temp_val_handle,
-            }, {
+            }, 
+            {
+                /*** Fan characteristic ***/
+                .uuid = &gatt_svr_fan_uuid.u,
+                .access_cb = gatt_svc_access,
+                .flags = BLE_GATT_CHR_F_READ |
+                         BLE_GATT_CHR_F_WRITE |
+                         BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &gatt_svr_fan_val_handle,
+            }, 
+            {
                 0, /* No more characteristics in this service. */
             }
         },
@@ -211,6 +237,13 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                                 sizeof(gatt_svr_temp_val_x10));
             return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
         }
+        if (attr_handle == gatt_svr_fan_val_handle)
+        {
+            rc = os_mbuf_append(ctxt->om,
+                                &gatt_svr_fan_val,
+                                sizeof(gatt_svr_fan_val));
+            return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+        }
         goto unknown;
 
     case BLE_GATT_ACCESS_OP_WRITE_CHR:
@@ -230,6 +263,21 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
             ble_gatts_chr_updated(attr_handle);
             MODLOG_DFLT(INFO, "Notification/Indication scheduled for "
                         "all subscribed peers.\n");
+            return rc;
+        }
+        if (attr_handle == gatt_svr_fan_val_handle)
+        {
+            rc = gatt_svr_write(ctxt->om,
+                                sizeof(gatt_svr_fan_val),
+                                sizeof(gatt_svr_fan_val),
+                                &gatt_svr_fan_val, NULL);
+            if (rc == 0) 
+            {
+                if(fan_level_callback != NULL)
+                {
+                    fan_level_callback(gatt_svr_fan_val);
+                }
+            }
             return rc;
         }
         goto unknown;
@@ -378,4 +426,14 @@ void gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle)
                                                      sizeof(gatt_svr_temp_val_x10));
         ble_gatts_notify_custom(conn_handle, gatt_svr_temp_val_handle, om);
     }
+}
+
+/**
+ * @brief Registers the callback for handling fan level updates.
+ *
+ * @param callback Callback function to invoke when a fan level is received.
+ */
+void gatt_svr_set_fan_level_callback(gatt_svr_fan_level_callback_t callback)
+{
+    fan_level_callback = callback;
 }
