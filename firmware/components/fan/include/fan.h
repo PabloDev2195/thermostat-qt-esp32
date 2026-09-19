@@ -67,39 +67,16 @@ typedef enum
 } fan_status_t;
 
 /**
- * @brief Initializes the fan module.
- *
- * Initializes the underlying PWM interface and sets the fan
- * to the OFF state.
- *
- * @return
- * - FAN_OK if the fan was initialized successfully.
- * - FAN_ERROR if the PWM initialization or configuration failed.
+ * @brief Creates the FreeRTOS task responsible for managing the fan.
  */
-fan_status_t fan_init(void);
+void fan_task_create(void);
 
 /**
- * @brief Sets the fan operating level.
+ * @brief Updates the requested fan operating level.
  *
- * Changes the fan speed according to the selected operating level.
- * The corresponding PWM duty cycle is handled internally by the
- * fan module.
- *
- * @param[in] level Desired fan operating level.
- *
- * @return
- * - FAN_OK if the fan level was changed successfully.
- * - FAN_INVALID_LEVEL if the specified level is not valid.
- * - FAN_ERROR if the underlying PWM operation failed.
+ * @param level Requested fan level.
  */
-fan_status_t fan_set_level(fan_level_t level);
-
-/**
- * @brief Gets the current fan operating level.
- *
- * @return Current fan operating level.
- */
-fan_level_t fan_get_level(void);
+void fan_update(fan_level_t level);
 
 #ifdef __cplusplus
 }
