@@ -2,6 +2,15 @@
 #include <QDebug>
 
 /**
+ * @brief UUID of the BLE fan level characteristic.
+ *
+ * Identifies the GATT characteristic used to control the fan
+ * operating level on the ESP32.
+ */
+const QBluetoothUuid BleManager::kFanLevelUuid(
+    QStringLiteral("0f0c0b0a-0908-0706-0504-030201efcdab"));
+
+/**
  * @brief Constructs the BleManager and initializes the BLE discovery agent.
  *
  * Creates the QBluetoothDeviceDiscoveryAgent as a child of this object (so it
@@ -197,6 +206,11 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
                     qDebug() << "CCCD descriptor not found!";
                 }
             }
+            if (ch.uuid() == kFanLevelUuid)
+            {
+                qDebug() << "Found fan level characteristic!";
+                m_fanLevelCharacteristic = ch;
+            }
         }
     }
 }
@@ -222,20 +236,45 @@ void BleManager::onCharacteristicChanged(
 const QLowEnergyCharacteristic &c,
     const QByteArray &value)
 {
-    if (value.size() < 2)
-        return;
-
-    int16_t temp_x10;
-
-    memcpy(&temp_x10, value.constData(), sizeof(temp_x10));
-
-    double newTemperature = temp_x10 / 10.0;
-
-    if (m_currentTemp == newTemperature)
+    if (value.size() >= 2)
     {
-        return;
-    }
+        int16_t temp_x10;
 
-    m_currentTemp = newTemperature;
-    emit currentTempChanged();
+        memcpy(&temp_x10, value.constData(), sizeof(temp_x10));
+
+        double newTemperature = temp_x10 / 10.0;
+
+        if (m_currentTemp != newTemperature)
+        {
+            m_currentTemp = newTemperature;
+            emit currentTempChanged();
+        }
+    }
+}
+
+/**
+ * @brief Sends the requested fan level to the ESP32 via BLE.
+ *
+ * Checks that the BLE service and fan level characteristic are
+ * available before writing the requested level with response.
+ *
+ * @param level Fan operating level (1 = Low, 2 = Medium, 3 = High).
+ *
+ * @note The level is transmitted as a single byte.
+ * @note If the BLE service or characteristic is unavailable,
+ *       the command is not sent.
+ */
+void BleManager::setFanLevel(quint8 level)
+{
+    if (m_service != nullptr
+        && m_fanLevelCharacteristic.isValid())
+    {
+        QByteArray data;
+        data.append(static_cast<char>(level));
+
+        m_service->writeCharacteristic(
+            m_fanLevelCharacteristic,
+            data,
+            QLowEnergyService::WriteWithResponse);
+    }
 }
