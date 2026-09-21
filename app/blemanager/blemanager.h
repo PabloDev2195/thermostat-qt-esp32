@@ -68,6 +68,15 @@ public:
      */
     double currentTemp() const { return m_currentTemp; }
 
+    /**
+     * @brief Sets the fan operating level from QML.
+     *
+     * Sends the requested fan level to the ESP32 through BLE.
+     *
+     * @param level Fan level (1 = Low, 2 = Medium, 3 = High).
+     */
+    Q_INVOKABLE void setFanLevel(quint8 level);
+
 signals:
     /**
      * @brief Emitted when the BLE connection status changes.
@@ -188,4 +197,18 @@ private:
      */
     static constexpr auto kThermostatServiceUuid =
         "{59462f12-9543-9999-12c8-58b459a2712d}";
+
+    /**
+     * @brief UUID of the fan level characteristic.
+     *
+     * Used to identify the fan level characteristic exposed by the ESP32.
+     */
+    static const QBluetoothUuid kFanLevelUuid;
+
+    /**
+     * @brief Fan level characteristic.
+     */
+    QLowEnergyCharacteristic m_fanLevelCharacteristic;
+
+
 };

@@ -415,6 +415,7 @@ Item {
                         anchors.fill: parent
                         onClicked: {
                             root.fanSpeed = (root.fanSpeed % 3) + 1;
+                            bleManager.setFanLevel(root.fanSpeed);
                         }
                     }
                 }
