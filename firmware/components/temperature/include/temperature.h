@@ -18,19 +18,20 @@ typedef enum
 } temperature_status_t;
 
 /**
- * @brief Read the current temperature.
+ * @brief Creates the temperature task.
  *
- * Reads the raw ADC value through the ADC abstraction layer
- * and converts it to a temperature value.
- *
- * @param[out] temperature Pointer where the temperature value
- *                         will be stored, in degrees Celsius.
- *
- * @return
- * - TEMPERATURE_STATUS_OK if the temperature was read successfully.
- * - TEMPERATURE_STATUS_ERROR if the temperature pointer is NULL
- *   or the ADC read operation fails.
+ * The task reads the temperature sensor and updates the BLE manager.
  */
-temperature_status_t temperature_read(float *temperature);
+void temperature_task_create(void);
+
+/**
+ * @brief Gets the current measured temperature.
+ *
+ * Returns the latest temperature value measured by the temperature
+ * module.
+ *
+ * @return Current temperature in degrees Celsius.
+ */
+float temperature_get_currentTemperature(void);
 
 #endif /* TEMPERATURE_H */

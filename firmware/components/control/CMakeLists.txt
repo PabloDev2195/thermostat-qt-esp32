@@ -1,11 +1,11 @@
 idf_component_register(
     SRCS
-        "src/temperature.c"
+        "src/control.c"
 
     INCLUDE_DIRS
         "include"
 
     REQUIRES
-        adc
-        bt_mgr
+        gpio
+        temperature
 )

@@ -1,11 +1,10 @@
 idf_component_register(
     SRCS
-        "src/temperature.c"
+        "src/gpio.c"
 
     INCLUDE_DIRS
         "include"
-
-    REQUIRES
-        adc
-        bt_mgr
+		
+	REQUIRES
+        esp32_hal
 )

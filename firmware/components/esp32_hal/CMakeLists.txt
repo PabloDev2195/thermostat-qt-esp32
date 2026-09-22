@@ -3,6 +3,7 @@ idf_component_register(
 	"src/esp32_adc.c"
     "src/esp32_gatt_svr.c"
     "src/esp32_pwm.c"
+    "src/esp32_gpio.c"
 
     INCLUDE_DIRS
         "include"
@@ -13,4 +14,5 @@ idf_component_register(
         nvs_flash
         bt
         esp_driver_ledc
+	    esp_driver_gpio
 )

@@ -1,7 +1,68 @@
 #include "temperature.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
 #include "adc.h"
+#include "ble_mgr.h"
+
+#define TEMPERATURE_TASK_STACK_SIZE    2048
+#define TEMPERATURE_TASK_PRIORITY      2
+#define TEMPERATURE_QUEUE_LENGTH       1
 
 #define TEMPERATURE_SENSOR_SCALING_FACTOR 100.0f
+
+temperature_status_t temperature_read(float *temperature);
+
+static float current_temperature = 0.0f;
+
+
+/**
+ * @brief FreeRTOS task for temperature monitoring.
+ *
+ * Periodically reads the temperature sensor and updates
+ * the current temperature value.
+ *
+ * @param pvParameters Task parameters (unused).
+ */
+static void temperature_task(void *pvParameters)
+{
+    float temp_c;
+    for (;;) 
+    {
+        temperature_status_t status = temperature_read(&temp_c);
+
+        if (status == TEMPERATURE_STATUS_OK) 
+        {
+            current_temperature = temp_c;
+            ble_manager_update_temperature(temp_c);
+        } 
+        else 
+        {
+
+        }
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+}
+
+/**
+ * @brief Creates the temperature task.
+ *
+ * The task reads the temperature sensor and updates the BLE manager.
+ */
+void temperature_task_create(void)
+{
+    xTaskCreate(
+        temperature_task,
+        "temperature_task",
+        TEMPERATURE_TASK_STACK_SIZE,
+        NULL,
+        TEMPERATURE_TASK_PRIORITY,
+        NULL
+    );
+}
+
 /**
  * @brief Read the current temperature.
  *
@@ -41,4 +102,17 @@ temperature_status_t temperature_read(float *temperature)
         }
     }
     return status;
+}
+
+/**
+ * @brief Gets the current measured temperature.
+ *
+ * Returns the latest temperature value obtained from the temperature
+ * measurement module.
+ *
+ * @return Current temperature in degrees Celsius.
+ */
+float temperature_get_currentTemperature(void)
+{
+    return current_temperature;
 }

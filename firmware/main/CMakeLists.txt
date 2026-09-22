@@ -7,4 +7,6 @@ idf_component_register(
              adc 
              temperature
              fan
+             gpio
+             control
 )
