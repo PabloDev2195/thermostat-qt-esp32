@@ -7,4 +7,5 @@ idf_component_register(
 
     REQUIRES
         adc
+        bt_mgr
 )
