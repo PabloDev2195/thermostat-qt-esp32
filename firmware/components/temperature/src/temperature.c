@@ -15,6 +15,8 @@
 
 temperature_status_t temperature_read(float *temperature);
 
+static float current_temperature = 0.0f;
+
 
 /**
  * @brief FreeRTOS task for temperature monitoring.
@@ -33,6 +35,7 @@ static void temperature_task(void *pvParameters)
 
         if (status == TEMPERATURE_STATUS_OK) 
         {
+            current_temperature = temp_c;
             ble_manager_update_temperature(temp_c);
         } 
         else 
@@ -99,4 +102,17 @@ temperature_status_t temperature_read(float *temperature)
         }
     }
     return status;
+}
+
+/**
+ * @brief Gets the current measured temperature.
+ *
+ * Returns the latest temperature value obtained from the temperature
+ * measurement module.
+ *
+ * @return Current temperature in degrees Celsius.
+ */
+float temperature_get_currentTemperature(void)
+{
+    return current_temperature;
 }

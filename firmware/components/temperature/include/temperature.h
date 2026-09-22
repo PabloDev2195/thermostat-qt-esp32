@@ -24,4 +24,14 @@ typedef enum
  */
 void temperature_task_create(void);
 
+/**
+ * @brief Gets the current measured temperature.
+ *
+ * Returns the latest temperature value measured by the temperature
+ * module.
+ *
+ * @return Current temperature in degrees Celsius.
+ */
+float temperature_get_currentTemperature(void);
+
 #endif /* TEMPERATURE_H */
