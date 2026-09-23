@@ -62,6 +62,13 @@ static const ble_uuid128_t gatt_svr_setpoint_uuid =
     BLE_UUID128_INIT(0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05,
                      0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d); 
 
+/* Mode characteristic — write + read + notify */
+static uint8_t gatt_svr_mode_val;
+static uint16_t gatt_svr_mode_val_handle;
+static const ble_uuid128_t gatt_svr_mode_uuid =
+    BLE_UUID128_INIT(0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05,
+                     0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0c); 
+
 /**
  * @brief Value stored by the custom GATT descriptor.
  *
@@ -81,6 +88,11 @@ static gatt_svr_fan_level_callback_t fan_level_callback = NULL;
  * @brief Stores the callback invoked when a setpoint value is received.
  */
 static gatt_svr_setpoint_callback_t setpoint_callback = NULL;
+
+/**
+ * @brief Stores the callback invoked when a mode value is received.
+ */
+static gatt_svr_mode_callback_t mode_callback = NULL;
 
 /**
  * @brief Handle GATT characteristic and descriptor access operations.
@@ -163,6 +175,15 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                          BLE_GATT_CHR_F_NOTIFY,
                 .val_handle = &gatt_svr_setpoint_val_handle,
             }, 
+            {
+                /*** Mode characteristic ***/
+                .uuid = &gatt_svr_mode_uuid.u,
+                .access_cb = gatt_svc_access,
+                .flags = BLE_GATT_CHR_F_READ |
+                         BLE_GATT_CHR_F_WRITE |
+                         BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &gatt_svr_mode_val_handle,
+            },
             {
                 0, /* No more characteristics in this service. */
             }
@@ -272,6 +293,13 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                                 sizeof(gatt_svr_setpoint_val));
             return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
         }
+        if (attr_handle == gatt_svr_mode_val_handle)
+        {
+            rc = os_mbuf_append(ctxt->om,
+                                &gatt_svr_mode_val,
+                                sizeof(gatt_svr_mode_val));
+            return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+        }
         goto unknown;
 
     case BLE_GATT_ACCESS_OP_WRITE_CHR:
@@ -316,10 +344,24 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                                 &gatt_svr_setpoint_val, NULL);
             if (rc == 0) 
             {
-                ESP_LOGI("GATT", "Setpoint recibido: %u", gatt_svr_setpoint_val);
                 if(setpoint_callback != NULL)
                 {
                     setpoint_callback(gatt_svr_setpoint_val);
+                }
+            }
+            return rc;
+        }
+        if (attr_handle == gatt_svr_mode_val_handle)
+        {
+            rc = gatt_svr_write(ctxt->om,
+                                sizeof(gatt_svr_mode_val),
+                                sizeof(gatt_svr_mode_val),
+                                &gatt_svr_mode_val, NULL);
+            if (rc == 0) 
+            {
+                if(mode_callback != NULL)
+                {
+                    mode_callback(gatt_svr_mode_val);
                 }
             }
             return rc;
@@ -490,4 +532,14 @@ void gatt_svr_set_fan_level_callback(gatt_svr_fan_level_callback_t callback)
 void gatt_svr_set_setpoint_callback(gatt_svr_setpoint_callback_t callback)
 {
     setpoint_callback = callback;
+}
+
+/**
+ * @brief Registers the callback for handling setpoint values updates.
+ *
+ * @param callback Callback function to invoke when a setpoint value is received.
+ */
+void gatt_svr_set_mode_callback(gatt_svr_mode_callback_t callback)
+{
+    mode_callback = callback;
 }
