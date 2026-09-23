@@ -11,6 +11,15 @@ const QBluetoothUuid BleManager::kFanLevelUuid(
     QStringLiteral("0f0c0b0a-0908-0706-0504-030201efcdab"));
 
 /**
+ * @brief UUID of the BLE setpoint characteristic.
+ *
+ * Identifies the GATT characteristic used to control the temperature
+ * regulation on the ESP32.
+ */
+const QBluetoothUuid BleManager::kSetpointUuid(
+    QStringLiteral("0d0c0b0a-0908-0706-0504-030201efcdab"));
+
+/**
  * @brief Constructs the BleManager and initializes the BLE discovery agent.
  *
  * Creates the QBluetoothDeviceDiscoveryAgent as a child of this object (so it
@@ -211,6 +220,11 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
                 qDebug() << "Found fan level characteristic!";
                 m_fanLevelCharacteristic = ch;
             }
+            if (ch.uuid() == kSetpointUuid)
+            {
+                qDebug() << "Found setpoint characteristic!";
+                m_setpointCharacteristic = ch;
+            }
         }
     }
 }
@@ -274,6 +288,40 @@ void BleManager::setFanLevel(quint8 level)
 
         m_service->writeCharacteristic(
             m_fanLevelCharacteristic,
+            data,
+            QLowEnergyService::WriteWithResponse);
+    }
+}
+
+
+/**
+ * @brief Sends the requested temperature setpoint to the ESP32 via BLE.
+ *
+ * The setpoint is transmitted as an unsigned 16-bit integer with a
+ * resolution of 0.1 °C.
+ *
+ * For example:
+ * - 220 -> 22.0 °C
+ * - 225 -> 22.5 °C
+ * - 250 -> 25.0 °C
+ *
+ * @param[in] setpoint Temperature setpoint in tenths of a degree Celsius.
+ *
+ * @note The value is transmitted as two bytes in little-endian order.
+ * @note The BLE service and characteristic must be available before
+ *       the command can be sent.
+ */
+void BleManager::setSetpoint(quint16 setpoint)
+{
+    if (m_service != nullptr
+        && m_setpointCharacteristic.isValid())
+    {
+        QByteArray data;
+        data.append(static_cast<char>(setpoint & 0xFF));
+        data.append(static_cast<char>((setpoint >> 8) & 0xFF));
+
+        m_service->writeCharacteristic(
+            m_setpointCharacteristic,
             data,
             QLowEnergyService::WriteWithResponse);
     }
