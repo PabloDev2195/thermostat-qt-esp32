@@ -77,6 +77,26 @@ public:
      */
     Q_INVOKABLE void setFanLevel(quint8 level);
 
+    /**
+     * @brief Sends the requested temperature setpoint to the ESP32 via BLE.
+     *
+     * The setpoint is transmitted as a 16-bit unsigned integer with a
+     * resolution of 0.1 °C. This method is exposed to QML through
+     * Q_INVOKABLE and can be called directly from the user interface.
+     *
+     * Example:
+     * @code
+     * setSetpoint(225); // 22.5 °C
+     * @endcode
+     *
+     * @param[in] setpoint Temperature setpoint in tenths of a degree Celsius.
+     *
+     * @note The value is transmitted using the BLE setpoint characteristic.
+     * @note The BLE service and setpoint characteristic must be available
+     *       before calling this method.
+     */
+    Q_INVOKABLE void setSetpoint(quint16 setpoint);
+
 signals:
     /**
      * @brief Emitted when the BLE connection status changes.
@@ -209,6 +229,18 @@ private:
      * @brief Fan level characteristic.
      */
     QLowEnergyCharacteristic m_fanLevelCharacteristic;
+
+    /**
+     * @brief UUID of the setpoint characteristic.
+     *
+     * Used to identify the setpoint characteristic exposed by the ESP32.
+     */
+    static const QBluetoothUuid kSetpointUuid;
+
+    /**
+     * @brief Setpoint characteristic.
+     */
+    QLowEnergyCharacteristic m_setpointCharacteristic;
 
 
 };

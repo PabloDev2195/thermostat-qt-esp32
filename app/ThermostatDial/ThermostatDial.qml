@@ -344,6 +344,7 @@ Item {
                             const newTemp = Math.round((root.minTemp + fraction * (root.maxTemp - root.minTemp)) * 2) / 2;
                             if (newTemp !== root.targetTemp) {
                                 root.targetTemp = newTemp;
+                                bleManager.setSetpoint(root.targetTemp * 10);
                             }
                         }
                     }
