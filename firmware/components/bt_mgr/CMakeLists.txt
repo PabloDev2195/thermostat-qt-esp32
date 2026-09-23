@@ -6,4 +6,5 @@ idf_component_register(
     REQUIRES
         esp32_hal
         fan
+        control
 )

@@ -47,6 +47,13 @@ struct ble_gatt_register_ctxt;
 typedef void (*gatt_svr_fan_level_callback_t)(uint8_t level);
 
 /**
+ * @brief Callback type for handling fan level updates received via GATT.
+ *
+ * @param level Fan level received from the GATT service.
+ */
+typedef void (*gatt_svr_setpoint_callback_t)(uint16_t setpoint);
+
+/**
  * @brief GATT server registration callback.
  *
  * Called by the NimBLE GATT server when a service, characteristic,
@@ -85,6 +92,13 @@ void gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle);
  * @param callback Callback function invoked when a fan level is received.
  */
 void gatt_svr_set_fan_level_callback(gatt_svr_fan_level_callback_t callback);
+
+/**
+ * @brief Sets the callback used to handle setpoint values updates.
+ *
+ * @param callback Callback function invoked when a setpoint value is received.
+ */
+void gatt_svr_set_setpoint_callback(gatt_svr_setpoint_callback_t callback);
 
 #ifdef __cplusplus
 }

@@ -7,6 +7,7 @@
 #define CONTROL_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief Thermostat operating mode.
@@ -35,7 +36,7 @@ typedef enum
  *
  * @return 0 on success, negative value on error.
  */
-int control_update(float current_temperature,float setpoint);
+uint8_t control_update(float current_temperature,float setpoint);
 
 /**
  * @brief Get current thermostat state.
@@ -54,5 +55,23 @@ control_state_t control_get_state(void);
  * evaluates the thermostat control logic.
  */
 void control_task_create(void);
+
+/**
+ * @brief Sets the desired temperature setpoint.
+ *
+ * Updates the temperature setpoint used by the control module.
+ * The input value is represented in tenths of a degree Celsius.
+ *
+ * For example:
+ * - 220 -> 22.0 °C
+ * - 255 -> 25.5 °C
+ * - 300 -> 30.0 °C
+ *
+ * @param setpoint Temperature setpoint in tenths of a degree Celsius.
+ *
+ * @note The received value is converted internally to a floating-point
+ *       temperature value by dividing it by 10.0.
+ */
+void control_set_setpoint(uint16_t setpoint);
 
 #endif /* CONTROL_H */
