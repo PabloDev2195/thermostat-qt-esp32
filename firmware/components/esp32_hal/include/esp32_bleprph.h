@@ -54,6 +54,13 @@ typedef void (*gatt_svr_fan_level_callback_t)(uint8_t level);
 typedef void (*gatt_svr_setpoint_callback_t)(uint16_t setpoint);
 
 /**
+ * @brief Callback type for handling mode updates received via GATT.
+ *
+ * @param mode Mode received from the GATT service.
+ */
+typedef void (*gatt_svr_mode_callback_t)(uint8_t mode);
+
+/**
  * @brief GATT server registration callback.
  *
  * Called by the NimBLE GATT server when a service, characteristic,
@@ -99,6 +106,13 @@ void gatt_svr_set_fan_level_callback(gatt_svr_fan_level_callback_t callback);
  * @param callback Callback function invoked when a setpoint value is received.
  */
 void gatt_svr_set_setpoint_callback(gatt_svr_setpoint_callback_t callback);
+
+/**
+ * @brief Sets the callback used to handle mode updates.
+ *
+ * @param callback Callback function invoked when a mode value is received.
+ */
+void gatt_svr_set_mode_callback(gatt_svr_mode_callback_t callback);
 
 #ifdef __cplusplus
 }

@@ -55,7 +55,7 @@ static QueueHandle_t fan_queue = NULL;
  *
  * The fan starts in the OFF state.
  */
-static fan_level_t current_level = FAN_LEVEL_OFF;
+static fan_level_t current_level = FAN_LEVEL_LOW;
 
 /**
  * @brief Sets the fan operating level.
@@ -98,7 +98,7 @@ fan_status_t fan_init(void)
     }
     else
     {
-        current_level = FAN_LEVEL_OFF;
+        current_level = FAN_LEVEL_LOW;
     }
     return status;
 }
@@ -194,7 +194,10 @@ fan_status_t fan_set_level(fan_level_t level)
     }
     else
     {
-        current_level = level;
+        if(level != FAN_LEVEL_OFF)
+        {
+            current_level = level;
+        } 
     }
 
     return status;
@@ -215,4 +218,16 @@ void fan_update(fan_level_t level)
     {
         xQueueOverwrite(fan_queue, &level);
     }
+}
+
+/**
+ * @brief Gets the current fan operating level.
+ *
+ * Retrieves the fan level currently stored in the control module.
+ *
+ * @return Current fan operating level (fan_level_t).
+ */
+fan_level_t fan_get_level(void)
+{
+    return current_level;
 }

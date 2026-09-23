@@ -78,6 +78,13 @@ void fan_task_create(void);
  */
 void fan_update(fan_level_t level);
 
+/**
+ * @brief Retrieves the current fan operating level.
+ *
+ * @return Current fan level.
+ */
+fan_level_t fan_get_level(void);
+
 #ifdef __cplusplus
 }
 #endif

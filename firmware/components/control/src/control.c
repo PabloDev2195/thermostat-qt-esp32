@@ -34,6 +34,7 @@
 
 #include "gpio.h"
 #include "temperature.h"
+#include "fan.h"
 
 /* Private definitions -----------------------------------------------------*/
 
@@ -61,6 +62,14 @@
 #define CONTROL_HYSTERESIS_NORMAL  1.5f
 
 /**
+ * @brief Hysteresis threshold for ECO mode.
+ *
+ * Defines the temperature hysteresis in degrees Celsius used
+ * by the control logic when operating in ECO mode.
+ */
+#define CONTROL_HYSTERESIS_ECO     2.5f
+
+/**
  * @brief Hysteresis applied before the setpoint has been reached.
  *
  * This value defines the temperature range around the setpoint while
@@ -81,19 +90,13 @@ static float s_hysteresis = 0.5f;
 static float fsetpoint = 22.0f;
 
 /**
- * @brief Current operating mode of the thermostat.
- *
- * The thermostat is initialized in OFF mode.
- */
-static control_mode_t s_mode = CONTROL_MODE_OFF;
-
-/**
  * @brief Current operating state of the thermostat.
  *
  * The possible states represent heating, cooling, or no active output.
  */
-static control_state_t s_state = CONTROL_STATE_OFF;
+static control_state_t s_state = CONTROL_STATE_IDLE;
 
+static control_mode_t s_mode = CONTROL_MODE_OFF;
 /* Private function prototypes --------------------------------------------*/
 
 /**
@@ -127,8 +130,8 @@ uint8_t control_init(void);
  */
 uint8_t control_init(void)
 {
+    s_state = CONTROL_STATE_IDLE;
     s_mode = CONTROL_MODE_OFF;
-    s_state = CONTROL_STATE_OFF;
 
     gpio_set_heater(GPIO_LEVEL_LOW);
     gpio_set_compressor(GPIO_LEVEL_LOW);
@@ -233,41 +236,61 @@ uint8_t control_update(float current_temperature, float setpoint)
 {
     static bool bsetpointReached = false;
 
-    if(bsetpointReached)
+    if(s_mode == CONTROL_MODE_OFF)
     {
-        s_hysteresis = CONTROL_HYSTERESIS_NORMAL;
+        bsetpointReached = false;
+        gpio_set_heater(GPIO_LEVEL_LOW);
+        gpio_set_compressor(GPIO_LEVEL_LOW);
+        fan_update(FAN_LEVEL_OFF);
     }
     else
     {
-        s_hysteresis = CONTROL_HYSTERESIS_SETPOINT;
-    }
+        if(bsetpointReached)
+        {
+            if(s_mode == CONTROL_MODE_ECO)
+            {
+                s_hysteresis = CONTROL_HYSTERESIS_ECO;
+            }
+            else
+            {
+                s_hysteresis = CONTROL_HYSTERESIS_NORMAL;
+            }
+        }
+        else
+        {
+            s_hysteresis = CONTROL_HYSTERESIS_SETPOINT;
+        }
 
-    const float upper_limit = setpoint + s_hysteresis;
-    const float lower_limit = setpoint - s_hysteresis;
+        const float upper_limit = setpoint + s_hysteresis;
+        const float lower_limit = setpoint - s_hysteresis;
 
-    if(current_temperature < lower_limit)
-    {
-        gpio_set_compressor(GPIO_LEVEL_LOW);
-        gpio_set_heater(GPIO_LEVEL_HIGH);
+        if(current_temperature < lower_limit)
+        {
+            gpio_set_compressor(GPIO_LEVEL_LOW);
+            gpio_set_heater(GPIO_LEVEL_HIGH);
+            fan_update(fan_get_level());
 
-        s_state = CONTROL_STATE_HEAT;
-        bsetpointReached = false;
-    }
-    else if(current_temperature > upper_limit)
-    {
-        gpio_set_heater(GPIO_LEVEL_LOW);
-        gpio_set_compressor(GPIO_LEVEL_HIGH);
+            s_state = CONTROL_STATE_HEAT;
+            bsetpointReached = false;
+        }
+        else if(current_temperature > upper_limit)
+        {
+            gpio_set_heater(GPIO_LEVEL_LOW);
+            gpio_set_compressor(GPIO_LEVEL_HIGH);
+            fan_update(fan_get_level());
 
-        s_state = CONTROL_STATE_COOL;
-        bsetpointReached = false;
-    }
-    else
-    {
-        gpio_set_heater(GPIO_LEVEL_LOW);
-        gpio_set_compressor(GPIO_LEVEL_LOW);
+            s_state = CONTROL_STATE_COOL;
+            bsetpointReached = false;
+        }
+        else
+        {
+            gpio_set_heater(GPIO_LEVEL_LOW);
+            gpio_set_compressor(GPIO_LEVEL_LOW);
+            fan_update(FAN_LEVEL_OFF);
 
-        s_state = CONTROL_STATE_OFF;
-        bsetpointReached = true;
+            s_state = CONTROL_STATE_IDLE;
+            bsetpointReached = true;
+        }
     }
 
     return 0;
@@ -290,6 +313,18 @@ control_state_t control_get_state(void)
 }
 
 /**
+ * @brief Gets the current operating mode of the control module.
+ *
+ * Returns the operating mode currently stored in the control module.
+ *
+ * @return Current control operating mode (control_mode_t).
+ */
+control_mode_t control_get_mode(void)
+{
+    return s_mode;
+}
+
+/**
  * @brief Updates the thermostat setpoint.
  *
  * Converts the setpoint value received as an unsigned 16-bit integer,
@@ -302,4 +337,19 @@ control_state_t control_get_state(void)
 void control_set_setpoint(uint16_t setpoint)
 {
     fsetpoint = setpoint/10.0f;
+}
+
+/**
+ * @brief Sets the operating mode of the control module.
+ *
+ * Updates the current control mode by converting the provided
+ * value to the corresponding control_mode_t enumeration.
+ *
+ * @param[in] mode Operating mode value corresponding to control_mode_t.
+ *
+ * @note The input value must match a valid control_mode_t enumerator.
+ */
+void control_set_mode(uint8_t mode)
+{
+    s_mode = (control_mode_t)mode;
 }
