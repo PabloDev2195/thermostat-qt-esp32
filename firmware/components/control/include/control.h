@@ -15,7 +15,8 @@
 typedef enum
 {
     CONTROL_MODE_OFF = 0,
-    CONTROL_MODE_AUTO
+    CONTROL_MODE_AUTO,
+    CONTROL_MODE_ECO
 } control_mode_t;
 
 /**
@@ -23,9 +24,9 @@ typedef enum
  */
 typedef enum
 {
-    CONTROL_STATE_OFF = 0,
+    CONTROL_STATE_IDLE = 0,
     CONTROL_STATE_HEAT,
-    CONTROL_STATE_COOL
+    CONTROL_STATE_COOL,
 } control_state_t;
 
 /**
@@ -44,6 +45,15 @@ uint8_t control_update(float current_temperature,float setpoint);
  * @return Current control state.
  */
 control_state_t control_get_state(void);
+
+/**
+ * @brief Gets the current operating mode of the control module.
+ *
+ * Retrieves the operating mode currently configured in the control module.
+ *
+ * @return Current operating mode (control_mode_t).
+ */
+control_mode_t control_get_mode(void);
 
 /**
  * @brief Creates the thermostat control task and command queue.
@@ -73,5 +83,16 @@ void control_task_create(void);
  *       temperature value by dividing it by 10.0.
  */
 void control_set_setpoint(uint16_t setpoint);
+
+/**
+ * @brief Sets the operating mode of the control module.
+ *
+ * Configures the control module operating mode.
+ *
+ * @param[in] mode Operating mode value corresponding to control_mode_t.
+ *
+ * @note The input value must match a valid control_mode_t enumerator.
+ */
+void control_set_mode(uint8_t mode);
 
 #endif /* CONTROL_H */

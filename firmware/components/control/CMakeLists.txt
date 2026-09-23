@@ -8,4 +8,5 @@ idf_component_register(
     REQUIRES
         gpio
         temperature
+        fan
 )
