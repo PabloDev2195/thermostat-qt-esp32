@@ -8,6 +8,7 @@
 #include "esp32_bleprph.h"
 #include "ble_mgr.h"
 #include "fan.h"
+#include "control.h"
 
 static const char *tag = "BLE_MGR";
 static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
@@ -15,6 +16,7 @@ static uint8_t own_addr_type;
 static uint16_t g_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 
 static void ble_manager_fan_level_callback(uint8_t fan_level);
+static void ble_manager_setpoint_callback(uint16_t setpoint);
 void ble_store_config_init(void);
 
 /**
@@ -274,6 +276,7 @@ void ble_manager_init(void)
     ble_store_config_init();
     nimble_port_freertos_init(bleprph_host_task);
     gatt_svr_set_fan_level_callback(ble_manager_fan_level_callback);
+    gatt_svr_set_setpoint_callback(ble_manager_setpoint_callback);
 }
 
 /**
@@ -313,3 +316,14 @@ static void ble_manager_fan_level_callback(uint8_t fan_level)
 {
     fan_update((fan_level_t)fan_level);
 }
+
+/**
+ * @brief Handles setpoint updates received through BLE.
+ *
+ * @param setpoint Setpoint received from the BLE interface.
+ */
+static void ble_manager_setpoint_callback(uint16_t setpoint)
+{
+    control_set_setpoint(setpoint);
+}
+    

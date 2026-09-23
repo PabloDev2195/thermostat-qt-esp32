@@ -76,6 +76,11 @@
 static float s_hysteresis = 0.5f;
 
 /**
+ * @brief Current setpoint value used by the control algorithm.
+ */
+static float fsetpoint = 22.0f;
+
+/**
  * @brief Current operating mode of the thermostat.
  *
  * The thermostat is initialized in OFF mode.
@@ -105,7 +110,7 @@ static void control_task(void *arg);
  *
  * @return 0 on success, negative value on error.
  */
-int control_init(void);
+uint8_t control_init(void);
 
 /* Public functions --------------------------------------------------------*/
 
@@ -120,7 +125,7 @@ int control_init(void);
  * @note
  * The function does not create the control task or command queue.
  */
-int control_init(void)
+uint8_t control_init(void)
 {
     s_mode = CONTROL_MODE_OFF;
     s_state = CONTROL_STATE_OFF;
@@ -159,7 +164,7 @@ static void control_task(void *arg)
     {
         float current_temp = temperature_get_currentTemperature();
 
-        control_update(current_temp, 25.0f);
+        control_update(current_temp, fsetpoint);
 
         vTaskDelay(pdMS_TO_TICKS(300));
     }
@@ -224,7 +229,7 @@ void control_task_create(void)
  * Consequently, the control algorithm can activate heating or cooling
  * even when s_mode is CONTROL_MODE_OFF.
  */
-int control_update(float current_temperature, float setpoint)
+uint8_t control_update(float current_temperature, float setpoint)
 {
     static bool bsetpointReached = false;
 
@@ -282,4 +287,19 @@ int control_update(float current_temperature, float setpoint)
 control_state_t control_get_state(void)
 {
     return s_state;
+}
+
+/**
+ * @brief Updates the thermostat setpoint.
+ *
+ * Converts the setpoint value received as an unsigned 16-bit integer,
+ * expressed in tenths of a degree Celsius, into a floating-point
+ * temperature in degrees Celsius and stores it in `fsetpoint`.
+ *
+ * @param[in] setpoint Setpoint temperature multiplied by 10.
+ *                     For example, 220 represents 22.0 °C.
+ */
+void control_set_setpoint(uint16_t setpoint)
+{
+    fsetpoint = setpoint/10.0f;
 }
