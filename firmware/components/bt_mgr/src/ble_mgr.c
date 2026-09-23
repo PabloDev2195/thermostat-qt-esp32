@@ -17,6 +17,7 @@ static uint16_t g_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 
 static void ble_manager_fan_level_callback(uint8_t fan_level);
 static void ble_manager_setpoint_callback(uint16_t setpoint);
+static void ble_manager_mode_callback(uint8_t mode);
 void ble_store_config_init(void);
 
 /**
@@ -277,6 +278,7 @@ void ble_manager_init(void)
     nimble_port_freertos_init(bleprph_host_task);
     gatt_svr_set_fan_level_callback(ble_manager_fan_level_callback);
     gatt_svr_set_setpoint_callback(ble_manager_setpoint_callback);
+    gatt_svr_set_mode_callback(ble_manager_mode_callback);
 }
 
 /**
@@ -326,4 +328,13 @@ static void ble_manager_setpoint_callback(uint16_t setpoint)
 {
     control_set_setpoint(setpoint);
 }
-    
+
+/**
+ * @brief Handles mode updates received through BLE.
+ *
+ * @param mode Mode received from the BLE interface.
+ */
+static void ble_manager_mode_callback(uint8_t mode)
+{
+    control_set_mode(mode);
+}
