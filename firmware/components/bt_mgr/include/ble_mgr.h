@@ -19,6 +19,18 @@ void ble_manager_init(void);
 void ble_manager_update_temperature(float temperature_c);
 
 /**
+ * @brief Updates the thermostat state and publishes it via BLE.
+ *
+ * Passes the new state to the GATT server for storage and
+ * notification to the connected BLE client.
+ *
+ * @param[in] state New thermostat state value.
+ *
+ * @note Uses the BLE manager's current connection handle.
+ */
+void ble_manager_update_state(uint8_t state);
+
+/**
  * Returns whether a BLE central is currently connected.
  */
 bool ble_manager_is_connected(void);
