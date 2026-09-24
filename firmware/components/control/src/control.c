@@ -33,6 +33,7 @@
 #include "freertos/task.h"
 
 #include "gpio.h"
+#include "ble_mgr.h"
 #include "temperature.h"
 #include "fan.h"
 
@@ -235,10 +236,12 @@ void control_task_create(void)
 uint8_t control_update(float current_temperature, float setpoint)
 {
     static bool bsetpointReached = false;
+    static control_state_t state = CONTROL_STATE_IDLE;
 
     if(s_mode == CONTROL_MODE_OFF)
     {
         bsetpointReached = false;
+        s_state = CONTROL_STATE_IDLE;
         gpio_set_heater(GPIO_LEVEL_LOW);
         gpio_set_compressor(GPIO_LEVEL_LOW);
         fan_update(FAN_LEVEL_OFF);
@@ -290,6 +293,12 @@ uint8_t control_update(float current_temperature, float setpoint)
 
             s_state = CONTROL_STATE_IDLE;
             bsetpointReached = true;
+        }
+
+        if(state != s_state)
+        {
+            state = s_state;
+            ble_manager_update_state((uint8_t)s_state);
         }
     }
 
