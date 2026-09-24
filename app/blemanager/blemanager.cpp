@@ -20,6 +20,15 @@ const QBluetoothUuid BleManager::kSetpointUuid(
     QStringLiteral("0d0c0b0a-0908-0706-0504-030201efcdab"));
 
 /**
+ * @brief UUID of the mode characteristic.
+ *
+ * Identifies the GATT characteristic used to control the mode
+ * operation on the ESP32.
+ */
+const QBluetoothUuid BleManager::kModeUuid(
+    QStringLiteral("0c0c0b0a-0908-0706-0504-030201efcdab"));
+
+/**
  * @brief Constructs the BleManager and initializes the BLE discovery agent.
  *
  * Creates the QBluetoothDeviceDiscoveryAgent as a child of this object (so it
@@ -225,6 +234,11 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
                 qDebug() << "Found setpoint characteristic!";
                 m_setpointCharacteristic = ch;
             }
+            if (ch.uuid() == kModeUuid)
+            {
+                qDebug() << "Found Mode characteristic!";
+                m_modeCharacteristic = ch;
+            }
         }
     }
 }
@@ -322,6 +336,35 @@ void BleManager::setSetpoint(quint16 setpoint)
 
         m_service->writeCharacteristic(
             m_setpointCharacteristic,
+            data,
+            QLowEnergyService::WriteWithResponse);
+    }
+}
+
+/**
+ * @brief Sends the requested control mode to the ESP32 via BLE.
+ *
+ * Transmits the specified operating mode as a single-byte value
+ * through the BLE mode characteristic using a write-with-response
+ * operation.
+ *
+ * @param[in] mode Control operating mode corresponding to a valid
+ *                 control_mode_t value defined in the ESP32 firmware.
+ *
+ * @note The BLE service and mode characteristic must be available
+ *       before the command can be sent.
+ * @note The mode value is transmitted as a single byte.
+ */
+void BleManager::setMode(quint8 mode)
+{
+    if (m_service != nullptr
+        && m_modeCharacteristic.isValid())
+    {
+        QByteArray data;
+        data.append(static_cast<char>(mode));
+
+        m_service->writeCharacteristic(
+            m_modeCharacteristic,
             data,
             QLowEnergyService::WriteWithResponse);
     }

@@ -97,6 +97,23 @@ public:
      */
     Q_INVOKABLE void setSetpoint(quint16 setpoint);
 
+    /**
+     * @brief Sends the requested control mode to the ESP32 via BLE.
+     *
+     * Exposes the method to QML, allowing the thermostat operating
+     * mode to be configured from the user interface.
+     *
+     * @param[in] mode Control operating mode value corresponding to
+     *                 a valid control_mode_t enumerator defined
+     *                 in the ESP32 firmware.
+     *
+     * @note The mode is transmitted as a single-byte value using
+     *       the BLE mode characteristic.
+     * @note The BLE service and mode characteristic must be available
+     *       before the command can be sent.
+     */
+    Q_INVOKABLE void setMode(quint8 mode);
+
 signals:
     /**
      * @brief Emitted when the BLE connection status changes.
@@ -242,5 +259,19 @@ private:
      */
     QLowEnergyCharacteristic m_setpointCharacteristic;
 
+    /**
+     * @brief UUID of the BLE control mode characteristic.
+     *
+     * Identifies the GATT characteristic used to configure the
+     * thermostat operating mode on the ESP32.
+     */
+    static const QBluetoothUuid kModeUuid;
 
+    /**
+     * @brief BLE characteristic used to configure the control mode.
+     *
+     * Stores the discovered GATT characteristic associated with
+     * the control mode UUID.
+     */
+    QLowEnergyCharacteristic m_modeCharacteristic;
 };
