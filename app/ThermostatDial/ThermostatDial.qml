@@ -57,8 +57,8 @@ Item {
     /// Current fan speed, 1 to 3 (controls how many bars of the fan icon light up).
     property int fanSpeed: 1
 
-    /// Thermostat mode: 1 = Off, 2 = Auto, 3 = Normal (see the mode ButtonGroup).
-    property int thermostatMode: 1
+    /// Thermostat mode: 0 = Off, 1 = Normal, 2 = Eco (see the mode ButtonGroup).
+    property int thermostatMode: 0
 
     /// Current date/time, refreshed every second by the Timer below; feeds the date text.
     property date now: new Date()
@@ -100,7 +100,7 @@ Item {
         id: mainColumn
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        spacing: 5
+        spacing: 20
 
         /// Date and time text, formatted as "dddd, d MMMM · hh:mm".
         Text {
@@ -131,7 +131,7 @@ Item {
                     id: modeGroup
                 }
 
-                /// "OFF" mode button (thermostatMode = 1). Checked by default on startup.
+                /// "OFF" mode button (thermostatMode = 0). Checked by default on startup.
                 Button {
                     text: "OFF"
                     checkable: true
@@ -153,13 +153,40 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                     }
                     onClicked: {
-                        root.thermostatMode = 1
+                        root.thermostatMode = 0
+                        bleManager.setMode(root.thermostatMode);
                     }
                 }
 
-                /// "Auto" mode button (thermostatMode = 2).
+                /// "Normal" mode button (thermostatMode = 1).
                 Button {
-                    text: "Auto"
+                    text: "Normal Mode"
+                    checkable: true
+                    width: 120
+                    height: 44
+                    ButtonGroup.group: modeGroup
+
+                    background: Rectangle {
+                        radius: 6
+                        color: parent.checked ? "#4a90c2" : "#3a3a3a"
+                        border.color: parent.checked ? "#FFFFFF" : "#555555"
+                        border.width: 1
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: parent.checked ? "black" : "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    onClicked: {
+                        root.thermostatMode = 1
+                        bleManager.setMode(root.thermostatMode);
+                    }
+                }
+
+                /// "Eco" mode button (thermostatMode = 2).
+                Button {
+                    text: "Eco Mode"
                     checkable: true
                     width: 120
                     height: 44
@@ -179,31 +206,7 @@ Item {
                     }
                     onClicked: {
                         root.thermostatMode = 2
-                    }
-                }
-
-                /// "Normal" mode button (thermostatMode = 3).
-                Button {
-                    text: "Normal"
-                    checkable: true
-                    width: 120
-                    height: 44
-                    ButtonGroup.group: modeGroup
-
-                    background: Rectangle {
-                        radius: 6
-                        color: parent.checked ? "#4a90c2" : "#3a3a3a"
-                        border.color: parent.checked ? "#FFFFFF" : "#555555"
-                        border.width: 1
-                    }
-                    contentItem: Text {
-                        text: parent.text
-                        color: parent.checked ? "black" : "white"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    onClicked: {
-                        root.thermostatMode = 3
+                        bleManager.setMode(root.thermostatMode);
                     }
                 }
             }
@@ -294,7 +297,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: bleManager.currentTemp.toFixed(1) + "°"
                         color: "#f4f4f2"
-                        font.pixelSize: 48
+                        font.pixelSize: 65
                         font.weight: Font.Medium
                     }
                     /// Secondary text showing the target temperature.
@@ -302,7 +305,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "Target " + root.targetTemp.toFixed(1) + "°"
                         color: "#9a9a92"
-                        font.pixelSize: 14
+                        font.pixelSize: 15
                     }
                     /// Status indicator: colored dot + text ("Idle"/"Heating"/"Disconnected").
                     Row {
