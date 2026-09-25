@@ -1,6 +1,15 @@
 #include "blemanager.h"
 #include <QDebug>
 
+
+/**
+ * @brief UUID of the BLE temperature characteristic.
+ *
+ * Identifies the GATT characteristic used to send temperature
+ * values on the ESP32.
+ */
+const QBluetoothUuid BleManager::kTemperatureUuid(
+    QStringLiteral("0e0c0b0a-0908-0706-0504-030201efcdab"));
 /**
  * @brief UUID of the BLE fan level characteristic.
  *
@@ -27,6 +36,16 @@ const QBluetoothUuid BleManager::kSetpointUuid(
  */
 const QBluetoothUuid BleManager::kModeUuid(
     QStringLiteral("0c0c0b0a-0908-0706-0504-030201efcdab"));
+
+
+/**
+ * @brief UUID of the state characteristic.
+ *
+ * Identifies the GATT characteristic used to send the state
+ * operation on the ESP32.
+ */
+const QBluetoothUuid BleManager::kStateUuid(
+    QStringLiteral("0b0c0b0a-0908-0706-0504-030201efcdab"));
 
 /**
  * @brief Constructs the BleManager and initializes the BLE discovery agent.
@@ -208,7 +227,7 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
         {
             qDebug() << " -" << ch.uuid().toString();
 
-            if (ch.uuid() == QBluetoothUuid(QString("{0e0c0b0a-0908-0706-0504-030201efcdab}")))
+            if (ch.uuid() == kTemperatureUuid)
             {
                 qDebug() << "Found temperature characteristic, enabling notifications...";
 
@@ -216,12 +235,8 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
                 if (cccd.isValid())
                 {
                     connect(m_service, &QLowEnergyService::characteristicChanged,
-                            this, &BleManager::onCharacteristicChanged);
+                            this, &BleManager::onTemperatureCharacteristicChanged);
                     m_service->writeDescriptor(cccd, QByteArray::fromHex("0100"));
-                }
-                else
-                {
-                    qDebug() << "CCCD descriptor not found!";
                 }
             }
             if (ch.uuid() == kFanLevelUuid)
@@ -238,6 +253,18 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
             {
                 qDebug() << "Found Mode characteristic!";
                 m_modeCharacteristic = ch;
+            }
+            if (ch.uuid() == kStateUuid)
+            {
+                qDebug() << "Found state characteristic, enabling notifications...";
+
+                auto cccd = ch.descriptor(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
+                if (cccd.isValid())
+                {
+                    connect(m_service, &QLowEnergyService::characteristicChanged,
+                            this, &BleManager::onStateCharacteristicChanged);
+                    m_service->writeDescriptor(cccd, QByteArray::fromHex("0100"));
+                }
             }
         }
     }
@@ -260,11 +287,12 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
  * @param[in] c BLE characteristic that generated the notification.
  * @param[in] value Raw characteristic value received from the ESP32.
  */
-void BleManager::onCharacteristicChanged(
+void BleManager::onTemperatureCharacteristicChanged(
 const QLowEnergyCharacteristic &c,
     const QByteArray &value)
 {
-    if (value.size() >= 2)
+    if (value.size() >= 2
+    && (c.uuid() == kTemperatureUuid))
     {
         int16_t temp_x10;
 
@@ -276,6 +304,43 @@ const QLowEnergyCharacteristic &c,
         {
             m_currentTemp = newTemperature;
             emit currentTempChanged();
+        }
+    }
+}
+
+/**
+  * @brief Handles state characteristic notifications received from the BLE device.
+  *
+  * Validates the received characteristic and updates the current thermostat
+  * state when a valid state value is received.
+  *
+  * The received state is encoded as a single byte:
+  * - 0: Idle
+  * - 1: Heating
+  * - 2: Cooling
+  *
+  * The @c currentStateChanged signal is emitted only when the received state
+  * differs from the current state.
+  *
+  * @param[in] c BLE characteristic that generated the notification.
+  * @param[in] value Data received from the BLE device.
+  */
+void BleManager::onStateCharacteristicChanged(
+    const QLowEnergyCharacteristic &c,
+    const QByteArray &value)
+{
+    if (value.size() >= 1
+    && (c.uuid() == kStateUuid))
+    {
+        const uint8_t state =
+            static_cast<uint8_t>(value.at(0));
+
+        qDebug() << "STATE VALUE =" << state;
+
+        if (m_currentState != state)
+        {
+            m_currentState = state;
+            emit currentStateChanged();
         }
     }
 }
