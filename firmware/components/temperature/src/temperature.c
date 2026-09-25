@@ -8,9 +8,9 @@
 #include "ble_mgr.h"
 
 #define TEMPERATURE_TASK_STACK_SIZE    2048
-#define TEMPERATURE_TASK_PRIORITY      2
+#define TEMPERATURE_TASK_PRIORITY      5
 #define TEMPERATURE_QUEUE_LENGTH       1
-
+#define TEMPERATURE_DEBOUNCE_COUNT     3
 #define TEMPERATURE_SENSOR_SCALING_FACTOR 100.0f
 
 temperature_status_t temperature_read(float *temperature);
@@ -29,20 +29,35 @@ static float current_temperature = 0.0f;
 static void temperature_task(void *pvParameters)
 {
     float temp_c;
-    for (;;) 
+    float samples = 0.0f;
+    static uint8_t sample_count = 0;
+
+    for (;;)
     {
         temperature_status_t status = temperature_read(&temp_c);
 
-        if (status == TEMPERATURE_STATUS_OK) 
+        if (status == TEMPERATURE_STATUS_OK)
         {
-            current_temperature = temp_c;
-            ble_manager_update_temperature(temp_c);
-        } 
-        else 
-        {
+            samples += temp_c;
+            sample_count++;
 
+            if (sample_count >= TEMPERATURE_DEBOUNCE_COUNT)
+            {
+                float average = samples / (float)TEMPERATURE_DEBOUNCE_COUNT;
+
+                current_temperature = average;
+                ble_manager_update_temperature(average);
+
+                sample_count = 0;
+                samples = 0.0f;
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(200));
+        else
+        {
+            sample_count = 0;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
