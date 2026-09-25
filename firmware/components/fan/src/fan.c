@@ -14,7 +14,7 @@
 #include "pwm.h"
 
 #define FAN_TASK_STACK_SIZE    2048
-#define FAN_TASK_PRIORITY      5
+#define FAN_TASK_PRIORITY      3
 #define FAN_QUEUE_LENGTH       1
 
 /**

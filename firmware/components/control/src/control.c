@@ -47,7 +47,7 @@
 /**
  * @brief Priority assigned to the control task.
  */
-#define CONTROL_TASK_PRIORITY      5
+#define CONTROL_TASK_PRIORITY      6
 
 /**
  * @brief Number of entries in the control command queue.
@@ -294,12 +294,12 @@ uint8_t control_update(float current_temperature, float setpoint)
             s_state = CONTROL_STATE_IDLE;
             bsetpointReached = true;
         }
+    }
 
-        if(state != s_state)
-        {
-            state = s_state;
-            ble_manager_update_state((uint8_t)s_state);
-        }
+    if(state != s_state)
+    {
+        state = s_state;
+        ble_manager_update_state((uint8_t)s_state);
     }
 
     return 0;
