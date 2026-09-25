@@ -94,6 +94,23 @@ int gatt_svr_init(void);
 void gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle);
 
 /**
+ * @brief Updates the thermostat state and sends a BLE notification.
+ *
+ * Stores the specified state in the GATT state characteristic.
+ * If a valid BLE connection handle is provided, notifies the
+ * connected client of the updated state.
+ *
+ * @param[in] state       New thermostat state value.
+ * @param[in] conn_handle BLE connection handle of the target client.
+ *
+ * @note Notifications are sent only if conn_handle is not
+ *       BLE_HS_CONN_HANDLE_NONE.
+ * @note The BLE client must enable notifications for the state
+ *       characteristic to receive updates.
+ */
+void gatt_svr_set_state(uint8_t state, uint16_t conn_handle);
+
+/**
  * @brief Sets the callback used to handle fan level updates.
  *
  * @param callback Callback function invoked when a fan level is received.

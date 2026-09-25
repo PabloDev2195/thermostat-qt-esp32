@@ -9,4 +9,5 @@ idf_component_register(
         gpio
         temperature
         fan
+        bt_mgr
 )

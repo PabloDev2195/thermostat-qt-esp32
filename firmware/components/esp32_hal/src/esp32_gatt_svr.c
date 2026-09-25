@@ -69,6 +69,13 @@ static const ble_uuid128_t gatt_svr_mode_uuid =
     BLE_UUID128_INIT(0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05,
                      0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0c); 
 
+/* State characteristic — read + notify */
+static int8_t gatt_svr_state_val;
+static uint16_t gatt_svr_state_val_handle;
+static const ble_uuid128_t gatt_svr_state_uuid =
+    BLE_UUID128_INIT(0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05,
+                     0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0b);
+
 /**
  * @brief Value stored by the custom GATT descriptor.
  *
@@ -185,6 +192,14 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
                 .val_handle = &gatt_svr_mode_val_handle,
             },
             {
+                /*** State characteristic ***/
+                .uuid = &gatt_svr_state_uuid.u,
+                .access_cb = gatt_svc_access,
+                .flags = BLE_GATT_CHR_F_READ | 
+                         BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &gatt_svr_state_val_handle,
+            }, 
+            {
                 0, /* No more characteristics in this service. */
             }
         },
@@ -272,7 +287,7 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                                 sizeof(gatt_svr_chr_val));
             return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
         }
-        if (attr_handle == gatt_svr_temp_val_handle)          // 👈 agrega esto
+        if (attr_handle == gatt_svr_temp_val_handle)
         {
             rc = os_mbuf_append(ctxt->om,
                                 &gatt_svr_temp_val_x10,
@@ -298,6 +313,13 @@ gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
             rc = os_mbuf_append(ctxt->om,
                                 &gatt_svr_mode_val,
                                 sizeof(gatt_svr_mode_val));
+            return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+        }
+        if (attr_handle == gatt_svr_state_val_handle)
+        {
+            rc = os_mbuf_append(ctxt->om,
+                                &gatt_svr_state_val,
+                                sizeof(gatt_svr_state_val));
             return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
         }
         goto unknown;
@@ -511,6 +533,33 @@ void gatt_svr_set_temperature(float temperature_c, uint16_t conn_handle)
         struct os_mbuf *om = ble_hs_mbuf_from_flat(&gatt_svr_temp_val_x10,
                                                      sizeof(gatt_svr_temp_val_x10));
         ble_gatts_notify_custom(conn_handle, gatt_svr_temp_val_handle, om);
+    }
+}
+
+/**
+ * @brief Updates and notifies the current thermostat state via BLE.
+ *
+ * Stores the specified state in the GATT state characteristic value.
+ * If a valid BLE connection handle is provided, sends a notification
+ * to the connected client using the custom GATT notification mechanism.
+ *
+ * @param[in] state       New thermostat state value to be stored and notified.
+ * @param[in] conn_handle BLE connection handle of the target client.
+ *
+ * @note Notifications are sent only when conn_handle is different from
+ *       BLE_HS_CONN_HANDLE_NONE.
+ * @note The client must have enabled notifications for the state
+ *       characteristic to receive the update.
+ */
+void gatt_svr_set_state(uint8_t state, uint16_t conn_handle)
+{
+    gatt_svr_state_val = state;
+
+    if (conn_handle != BLE_HS_CONN_HANDLE_NONE) 
+    {
+        struct os_mbuf *om = ble_hs_mbuf_from_flat(&gatt_svr_state_val,
+                                                     sizeof(gatt_svr_state_val));
+        ble_gatts_notify_custom(conn_handle, gatt_svr_state_val_handle, om);
     }
 }
 
