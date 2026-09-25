@@ -40,6 +40,22 @@ class BleManager : public QObject {
      */
     Q_PROPERTY(double currentTemp READ currentTemp NOTIFY currentTempChanged)
 
+    /**
+     * @brief Current thermostat operating state.
+     *
+     * Exposes the current state received from the BLE device to QML.
+     *
+     * Possible values:
+     * - 0: Idle
+     * - 1: Heating
+     * - 2: Cooling
+     *
+     * @property currentState
+     * @type quint8
+     * @notify currentStateChanged
+     */
+    Q_PROPERTY(quint8 currentState READ currentState NOTIFY currentStateChanged)
+
 public:
     /**
      * @brief Constructs the manager and prepares the BLE discovery agent.
@@ -67,6 +83,13 @@ public:
      * @return Current temperature in degrees Celsius.
      */
     double currentTemp() const { return m_currentTemp; }
+
+    /**
+     * @brief Get the current state.
+     *
+     * @return Current operating state.
+     */
+    quint8 currentState() const { return m_currentState; }
 
     /**
      * @brief Sets the fan operating level from QML.
@@ -124,6 +147,11 @@ signals:
      * @brief Emitted when the current temperature changes.
      */
     void currentTempChanged();
+
+    /**
+     * @brief Emitted when the current state changes.
+     */
+    void currentStateChanged();
 
 private slots:
     /**
@@ -194,8 +222,20 @@ private slots:
      * @param[in] c BLE characteristic that generated the update.
      * @param[in] value New value received from the characteristic.
      */
-    void onCharacteristicChanged(const QLowEnergyCharacteristic &c,
-                                 const QByteArray &value);
+    void onTemperatureCharacteristicChanged(const QLowEnergyCharacteristic &c,
+                                            const QByteArray &value);
+
+    /**
+     * @brief Handles state characteristic notifications received from the BLE device.
+     *
+     * Validates that the notification belongs to the state characteristic and
+     * updates the current thermostat state when a valid value is received.
+     *
+     * @param[in] c BLE characteristic that generated the notification.
+     * @param[in] value Data received from the BLE device.
+     */
+    void onStateCharacteristicChanged(const QLowEnergyCharacteristic &c,
+                                      const QByteArray &value);
 
 private:
     /**
@@ -227,6 +267,13 @@ private:
     double m_currentTemp = 0.0;
 
     /**
+     * @brief Current state received from the ESP32.
+     *
+     * State value in degrees Celsius.
+     */
+    quint8 m_currentState = 0;
+
+    /**
      * @brief UUID of the thermostat GATT service.
      *
      * Used to identify the custom thermostat service during BLE service
@@ -234,6 +281,13 @@ private:
      */
     static constexpr auto kThermostatServiceUuid =
         "{59462f12-9543-9999-12c8-58b459a2712d}";
+
+    /**
+     * @brief UUID of the temperature characteristic.
+     *
+     * Used to identify the temperature characteristic exposed by the ESP32.
+     */
+    static const QBluetoothUuid kTemperatureUuid;
 
     /**
      * @brief UUID of the fan level characteristic.
@@ -274,4 +328,13 @@ private:
      * the control mode UUID.
      */
     QLowEnergyCharacteristic m_modeCharacteristic;
+
+
+    /**
+     * @brief UUID of the BLE control state characteristic.
+     *
+     * Identifies the GATT characteristic used to configure the
+     * thermostat operating state on the ESP32.
+     */
+    static const QBluetoothUuid kStateUuid;
 };

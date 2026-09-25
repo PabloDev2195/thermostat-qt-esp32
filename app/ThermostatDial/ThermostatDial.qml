@@ -100,7 +100,7 @@ Item {
         id: mainColumn
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        spacing: 20
+        spacing: 10
 
         /// Date and time text, formatted as "dddd, d MMMM · hh:mm".
         Text {
@@ -112,10 +112,19 @@ Item {
             font.weight: Font.DemiBold
         }
 
+
+        Rectangle {
+            width: 500
+            height: 2
+            radius: 1
+            color: "#555555"
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
         /// Row holding the three main sections: mode buttons, dial, fan control.
         Row {
             id: content
-            spacing: 12
+            spacing: 5
 
             // ----------------------------------------------------------
             // Mode buttons column (Off / Auto / Normal)
@@ -124,7 +133,7 @@ Item {
             /// Thermostat mode buttons, mutually exclusive via ButtonGroup.
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 30
+                spacing: 20
 
                 /// Groups the three mode buttons so only one is "checked" at a time.
                 ButtonGroup {
@@ -295,35 +304,77 @@ Item {
                     /// Current temperature, large, centered in the dial (e.g. "21.5°").
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: bleManager.currentTemp.toFixed(1) + "°"
+                        text: ((bleManager.currentTemp) ? bleManager.currentTemp.toFixed(1): "--.-")  + "°"
                         color: "#f4f4f2"
                         font.pixelSize: 65
                         font.weight: Font.Medium
                     }
-                    /// Secondary text showing the target temperature.
-                    Text {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Target " + root.targetTemp.toFixed(1) + "°"
-                        color: "#9a9a92"
-                        font.pixelSize: 15
-                    }
-                    /// Status indicator: colored dot + text ("Idle"/"Heating"/"Disconnected").
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: 6
-                        /// Colored dot: green if `root.connected`, red otherwise.
-                        Rectangle {
-                            width: 8
-                            height: 8
-                            radius: 4
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: root.connected ? "#63a35c" : "#a33d3d"
-                        }
-                        /// Status text derived from `connected` and `heating`.
-                        Text {
-                            text: root.connected ? (root.heating ? "Heating" : "Idle") : "Disconnected"
-                            color: "#9a9a92"
-                            font.pixelSize: 12
+
+                    Rectangle {
+                        width: 140
+                        height: 85
+                        radius: 5
+
+                        color: "#000000"
+                        border.color: "#3a3a36"
+                        border.width: 1
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 10
+
+                            /// Secondary text showing the target temperature.
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "Target " +  root.targetTemp.toFixed(1) + "°"
+                                color: "#9a9a92"
+                                font.pixelSize: 20
+                            }
+
+                            /// Status indicator: colored dot + text ("Idle"/"Heating"/"Disconnected").
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 4
+                                Text {
+                                    width: 18
+                                    height: 18
+
+                                    text: {
+                                        switch (bleManager.currentState) {
+                                        case 0: return "⏸"
+                                        case 1: return "🔥"
+                                        case 2: return "❄"
+                                        default: return "⏸"
+                                        }
+                                    }
+
+                                    font.pixelSize: 20
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+
+                                    color: {
+                                        switch (bleManager.currentState) {
+                                        case 0: return "#63a35c"
+                                        case 1: return "#FF7043"
+                                        case 2: return "#42A5F5"
+                                        default: return "#9a9a92"
+                                        }
+                                    }
+                                }
+                                /// Status text derived from `connected` and `heating`.
+                                Text {
+                                    text: {
+                                        switch (bleManager.currentState) {
+                                        case 0: return "Idle"
+                                        case 1: return "Heating"
+                                        case 2: return "Cooling"
+                                        default: return "Idle"
+                                        }
+                                    }
+                                    color: "#9a9a92"
+                                    font.pixelSize: 16
+                                }
+                            }
                         }
                     }
                 }
@@ -434,39 +485,46 @@ Item {
                 }
             }
         }
-    }
 
-    // ------------------------------------------------------------------
-    // Bluetooth connection indicator
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Bluetooth connection indicator
+        // ------------------------------------------------------------------
+        Row {
+            anchors.horizontalCenter: mainColumn.horizontalCenter
+            spacing: 2
+            /**
+             * Bluetooth icon (hand-drawn with PathLine, classic BT logo shape).
+             * Color reflects `bleManager.connected`:
+             * blue (#4da6ff) when a BLE connection is active, gray (#666666) otherwise.
+             * Positioned in the top-right corner, aligned with the date/time text.
+             */
+            Shape {
+                id: bluetoothIcon
+                anchors.margins: 16
+                width: 30
+                height: 30
 
-    /**
-     * Bluetooth icon (hand-drawn with PathLine, classic BT logo shape).
-     * Color reflects `bleManager.connected`:
-     * blue (#4da6ff) when a BLE connection is active, gray (#666666) otherwise.
-     * Positioned in the top-right corner, aligned with the date/time text.
-     */
-    Shape {
-        id: bluetoothIcon
-        anchors.verticalCenter: dateTimeText.verticalCenter
-        anchors.right: parent.right
-        anchors.margins: 16
-        width: 30
-        height: 30
+                ShapePath {
+                    strokeWidth: 2
+                    strokeColor: bleManager.connected ? "#4da6ff" : "#666666"
+                    fillColor: "transparent"
+                    capStyle: ShapePath.RoundCap
+                    joinStyle: ShapePath.RoundJoin
 
-        ShapePath {
-            strokeWidth: 2
-            strokeColor: bleManager.connected ? "#4da6ff" : "#666666"
-            fillColor: "transparent"
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
-
-            startX: 6; startY: 4
-            PathLine { x: 18; y: 16 }
-            PathLine { x: 12; y: 22 }
-            PathLine { x: 12; y: 2 }
-            PathLine { x: 18; y: 8 }
-            PathLine { x: 6; y: 20 }
+                    startX: 6; startY: 4
+                    PathLine { x: 18; y: 16 }
+                    PathLine { x: 12; y: 22 }
+                    PathLine { x: 12; y: 2 }
+                    PathLine { x: 18; y: 8 }
+                    PathLine { x: 6; y: 20 }
+                }
+            }
+            Text {
+                text: bleManager.connected ? "Connected" : "Disconnected"
+                color: "#f4f4f2"
+                font.pixelSize: 20
+                font.weight: Font.DemiBold
+            }
         }
     }
 }
